@@ -1,7 +1,15 @@
 #include "smart_ptr/SharedPtr.hpp"
 
+#include <clocale>
 #include <iostream>
 #include <utility>
+
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#endif
 
 namespace {
 
@@ -148,6 +156,12 @@ void testDereferenceAndAssign() {
 }  // namespace
 
 int main() {
+#ifdef _WIN32
+    // Строки теста в UTF-8, консоль Windows по умолчанию в OEM (866).
+    std::setlocale(LC_CTYPE, ".UTF-8");
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+#endif
     testOwnership();
     testMove();
     testReset();
