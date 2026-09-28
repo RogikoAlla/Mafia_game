@@ -10,11 +10,18 @@ target_include_directories(shared_ptr INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/incl
 target_sources(shared_ptr INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include/smart_ptr/SharedPtr.hpp)
 target_compile_features(shared_ptr INTERFACE cxx_std_17)
 
+function(mafia_set_utf8 target)
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /utf-8)
+    else()
+        target_compile_options(${target} PRIVATE -finput-charset=UTF-8 -fexec-charset=UTF-8)
+    endif()
+endfunction()
+
 add_executable(mafia src/main.cpp)
 target_link_libraries(mafia PRIVATE shared_ptr)
+mafia_set_utf8(mafia)
 
-if(MSVC)
-    target_compile_options(mafia PRIVATE /utf-8)
-else()
-    target_compile_options(mafia PRIVATE -finput-charset=UTF-8 -fexec-charset=UTF-8)
-endif()
+add_executable(test_shared_ptr tests/test_shared_ptr.cpp)
+target_link_libraries(test_shared_ptr PRIVATE shared_ptr)
+mafia_set_utf8(test_shared_ptr)
