@@ -2,7 +2,6 @@
 
 #include "game/Types.hpp"
 
-#include <algorithm>
 #include <condition_variable>
 #include <mutex>
 #include <vector>
@@ -13,19 +12,10 @@ namespace mafia {
 // Поля меняются только под mutex_, сон идёт через condition_.
 class GameState {
 public:
-    // k = 3: мафии max(1, N/k). Дальше по одному: доктор, комиссар, маньяк. Хвост — мирные.
     // Индекс 0 не используется: роль игрока i лежит в roles_[i].
-    explicit GameState(int playerCount) : playerCount_(playerCount), roles_(playerCount + 1, Role::Civilian) {
-        constexpr int kMafiaDivisor = 3;
-        const int mafiaCount = std::max(1, playerCount_ / kMafiaDivisor);
-        int nextId = 1;
-        for (int i = 0; i < mafiaCount; ++i, ++nextId) {
-            roles_[nextId] = Role::Mafia;
-        }
-        roles_[nextId++] = Role::Doctor;
-        roles_[nextId++] = Role::Commissioner;
-        roles_[nextId++] = Role::Maniac;
-    }
+    // До раздачи ведущим все роли — мирные.
+    explicit GameState(int playerCount)
+        : playerCount_(playerCount), roles_(playerCount + 1, Role::Civilian) {}
 
     GameState(const GameState&) = delete;  // не копируем
     GameState& operator=(const GameState&) = delete; // не присваиваем другому объекту GameState                                    
@@ -82,7 +72,9 @@ public:
 
     int playerCount() const { return playerCount_; }
 
-    // Роль не меняется после раздачи, поэтому замок не нужен — как у playerCount().
+    // Ведущий раздаёт роли до старта потоков. После этого роль не меняется.
+    void assignRole(int playerId, Role role) { roles_[playerId] = role; }
+
     Role role(int playerId) const { return roles_[playerId]; }
 
 private:
