@@ -1,5 +1,12 @@
+#include "game/Host.hpp"
+#include "game/Player.hpp"
+
+#include "smart_ptr/SharedPtr.hpp"
+
 #include <clocale>
 #include <iostream>
+#include <thread>
+#include <vector>
 
 #ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
@@ -15,6 +22,23 @@ int main() {
     SetConsoleOutputCP(CP_UTF8);
     SetConsoleCP(CP_UTF8);
 #endif
-    std::cout << "mafia: проект собирается\n";
+
+    constexpr int kPlayers = 5;
+    constexpr int kRounds = 2;
+
+    mafia::SharedPtr<mafia::GameState> state(new mafia::GameState(kPlayers));
+
+    std::vector<std::thread> players;
+    players.reserve(kPlayers);
+    for (int playerId = 1; playerId <= kPlayers; ++playerId) {
+        players.emplace_back(mafia::runPlayer, state, playerId, kRounds);
+    }
+
+    std::thread host(mafia::runHost, state, kRounds);
+
+    host.join();
+    for (std::thread& player : players) {
+        player.join();
+    }
     return 0;
 }
