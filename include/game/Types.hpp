@@ -10,4 +10,18 @@ enum class Phase {
     Finished,
 };
 
+inline const char* phaseName(Phase phase) {
+    switch (phase) {
+    case Phase::DayTalk:
+        return "дневное обсуждение";
+    case Phase::DayVote:
+        return "дневное голосование";
+    case Phase::Night:
+        return "ночь";
+    case Phase::Finished:
+        return "конец";
+    }
+    return "неизвестная фаза";
+}
+
 }  // namespace mafia
