@@ -31,3 +31,16 @@ mafia_set_utf8(mafia)
 add_executable(test_shared_ptr tests/test_shared_ptr.cpp)
 target_link_libraries(test_shared_ptr PRIVATE shared_ptr)
 mafia_set_utf8(test_shared_ptr)
+
+add_executable(test_phases
+    tests/test_phases.cpp
+    src/game/Host.cpp
+    src/game/Player.cpp
+)
+target_link_libraries(test_phases PRIVATE shared_ptr Threads::Threads)
+mafia_set_utf8(test_phases)
+
+enable_testing()
+add_test(NAME shared_ptr COMMAND test_shared_ptr)
+add_test(NAME phases COMMAND test_phases)
+set_tests_properties(phases PROPERTIES TIMEOUT 10)
