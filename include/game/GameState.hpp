@@ -1,0 +1,82 @@
+#pragma once
+
+#include "game/Types.hpp"
+
+#include <condition_variable>
+#include <mutex>
+
+namespace mafia {
+
+// Одна партия на всех. Ведущий и игроки держат её через SharedPtr.
+// Поля меняются только под mutex_, сон идёт через condition_.
+class GameState {
+public:
+    explicit GameState(int playerCount) : playerCount_(playerCount) {}
+
+    GameState(const GameState&) = delete;  // не копируем
+    GameState& operator=(const GameState&) = delete; // не присваиваем другому объекту GameState                                    
+
+    // Ведущий открывает фазу, обнуляет счётчик ходов и будит игроков.
+    void beginPhase(Phase phase, int round) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        phase_ = phase;
+        round_ = round;
+        acted_ = 0;
+        if (phase == Phase::Finished) {
+            finished_ = true;
+        }
+        condition_.notify_all();
+    }
+
+    // Игрок спит, пока ведущий не откроет нужную фазу этого раунда.
+    // Конец партии тоже будит: иначе поток останется ждать фазу, которой уже не будет.
+    // Начальное Finished само по себе поток не будит: партия ещё не объявлена законченной.
+    void waitForPhase(Phase phase, int round) {
+        std::unique_lock<std::mutex> lock(mutex_);
+        condition_.wait(lock, [&] {
+            return (phase_ == phase && round_ == round) || finished_;
+        });
+    }
+
+    // Игрок отмечает ход и будит ведущего.
+    void markActed() {
+        std::lock_guard<std::mutex> lock(mutex_);
+        ++acted_;
+        condition_.notify_all();
+    }
+
+    // Ведущий спит, пока не сходят все игроки этой фазы.
+    void waitUntilAllActed() {
+        std::unique_lock<std::mutex> lock(mutex_);
+        condition_.wait(lock, [&] { return acted_ >= playerCount_; });
+    }
+  
+    Phase phase() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return phase_;
+    }
+
+    int round() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return round_;
+    }
+
+    int acted() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return acted_;
+    }
+
+    int playerCount() const { return playerCount_; }
+
+private:
+    Phase phase_ = Phase::Finished;
+    int round_ = 0;
+    int acted_ = 0;
+    int playerCount_ = 0;
+    bool finished_ = false;
+
+    mutable std::mutex mutex_;
+    std::condition_variable condition_;
+};
+
+}  // namespace mafia

@@ -3,7 +3,6 @@
 
 #include "smart_ptr/SharedPtr.hpp"
 
-#include <clocale>
 #include <iostream>
 #include <thread>
 #include <vector>
@@ -15,10 +14,21 @@
 #include <windows.h>
 #endif
 
+namespace {
+
+int failures = 0;
+
+void expect(bool condition, const char* message) {
+    if (!condition) {
+        std::cerr << "FAIL: " << message << '\n';
+        ++failures;
+    }
+}
+
+}  // namespace
+
 int main() {
 #ifdef _WIN32
-    // Исходники и литералы в UTF-8, консоль Windows по умолчанию в OEM (866).
-    std::setlocale(LC_CTYPE, ".UTF-8");
     SetConsoleOutputCP(CP_UTF8);
     SetConsoleCP(CP_UTF8);
 #endif
@@ -35,10 +45,19 @@ int main() {
     }
 
     std::thread host(mafia::runHost, state, kRounds);
-
     host.join();
     for (std::thread& player : players) {
         player.join();
     }
+
+    expect(state->phase() == mafia::Phase::Finished, "после двух раундов фаза — конец");
+    expect(state->round() == kRounds, "ведущий дошёл до второго раунда");
+    expect(state.get() != nullptr, "партия жива после join");
+
+    if (failures != 0) {
+        std::cerr << failures << " проверок не прошли\n";
+        return 1;
+    }
+    std::cout << "фазы: все проверки прошли\n";
     return 0;
 }
