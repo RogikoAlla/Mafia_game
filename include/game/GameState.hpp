@@ -13,8 +13,8 @@ class GameState {
 public:
     explicit GameState(int playerCount) : playerCount_(playerCount) {}
 
-    GameState(const GameState&) = delete;
-    GameState& operator=(const GameState&) = delete;
+    GameState(const GameState&) = delete;  // не копируем
+    GameState& operator=(const GameState&) = delete; // не присваиваем другому объекту GameState                                    
 
     // Ведущий открывает фазу, обнуляет счётчик ходов и будит игроков.
     void beginPhase(Phase phase, int round) {
@@ -22,15 +22,19 @@ public:
         phase_ = phase;
         round_ = round;
         acted_ = 0;
+        if (phase == Phase::Finished) {
+            finished_ = true;
+        }
         condition_.notify_all();
     }
 
     // Игрок спит, пока ведущий не откроет нужную фазу этого раунда.
-    // Finished тоже будит: иначе поток останется ждать фазу, которой уже не будет.
+    // Конец партии тоже будит: иначе поток останется ждать фазу, которой уже не будет.
+    // Начальное Finished само по себе поток не будит: партия ещё не объявлена законченной.
     void waitForPhase(Phase phase, int round) {
         std::unique_lock<std::mutex> lock(mutex_);
         condition_.wait(lock, [&] {
-            return (phase_ == phase && round_ == round) || phase_ == Phase::Finished;
+            return (phase_ == phase && round_ == round) || finished_;
         });
     }
 
@@ -46,7 +50,7 @@ public:
         std::unique_lock<std::mutex> lock(mutex_);
         condition_.wait(lock, [&] { return acted_ >= playerCount_; });
     }
-
+  
     Phase phase() const {
         std::lock_guard<std::mutex> lock(mutex_);
         return phase_;
@@ -69,6 +73,7 @@ private:
     int round_ = 0;
     int acted_ = 0;
     int playerCount_ = 0;
+    bool finished_ = false;
 
     mutable std::mutex mutex_;
     std::condition_variable condition_;
