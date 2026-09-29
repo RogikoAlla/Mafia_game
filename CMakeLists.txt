@@ -18,11 +18,14 @@ function(mafia_set_utf8 target)
     endif()
 endfunction()
 
+find_package(Threads REQUIRED)
+
 add_executable(mafia
     src/main.cpp
     src/game/Host.cpp
+    src/game/Player.cpp
 )
-target_link_libraries(mafia PRIVATE shared_ptr)
+target_link_libraries(mafia PRIVATE shared_ptr Threads::Threads)
 mafia_set_utf8(mafia)
 
 add_executable(test_shared_ptr tests/test_shared_ptr.cpp)
