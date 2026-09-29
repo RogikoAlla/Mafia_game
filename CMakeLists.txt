@@ -18,7 +18,10 @@ function(mafia_set_utf8 target)
     endif()
 endfunction()
 
-add_executable(mafia src/main.cpp)
+add_executable(mafia
+    src/main.cpp
+    src/game/Host.cpp
+)
 target_link_libraries(mafia PRIVATE shared_ptr)
 mafia_set_utf8(mafia)
 
