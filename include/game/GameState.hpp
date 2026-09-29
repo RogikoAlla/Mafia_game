@@ -4,6 +4,7 @@
 
 #include <condition_variable>
 #include <mutex>
+#include <vector>
 
 namespace mafia {
 
@@ -11,7 +12,10 @@ namespace mafia {
 // Поля меняются только под mutex_, сон идёт через condition_.
 class GameState {
 public:
-    explicit GameState(int playerCount) : playerCount_(playerCount) {}
+    // Индекс 0 не используется: роль игрока i лежит в roles_[i].
+    // До раздачи ведущим все роли — мирные.
+    explicit GameState(int playerCount)
+        : playerCount_(playerCount), roles_(playerCount + 1, Role::Civilian) {}
 
     GameState(const GameState&) = delete;  // не копируем
     GameState& operator=(const GameState&) = delete; // не присваиваем другому объекту GameState                                    
@@ -68,12 +72,18 @@ public:
 
     int playerCount() const { return playerCount_; }
 
+    // Ведущий раздаёт роли до старта потоков. После этого роль не меняется.
+    void assignRole(int playerId, Role role) { roles_[playerId] = role; }
+
+    Role role(int playerId) const { return roles_[playerId]; }
+
 private:
     Phase phase_ = Phase::Finished;
     int round_ = 0;
     int acted_ = 0;
     int playerCount_ = 0;
     bool finished_ = false;
+    std::vector<Role> roles_;
 
     mutable std::mutex mutex_;
     std::condition_variable condition_;

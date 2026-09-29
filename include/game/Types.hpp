@@ -2,6 +2,31 @@
 
 namespace mafia {
 
+// Роль игрока. Id с 1. Мафии — max(1, N/3), затем доктор, комиссар, маньяк, остальные мирные.
+enum class Role {
+    Mafia,
+    Doctor,
+    Commissioner,
+    Maniac,
+    Civilian,
+};
+
+inline const char* roleName(Role role) {
+    switch (role) {
+    case Role::Mafia:
+        return "мафия";
+    case Role::Doctor:
+        return "доктор";
+    case Role::Commissioner:
+        return "комиссар";
+    case Role::Maniac:
+        return "маньяк";
+    case Role::Civilian:
+        return "мирный";
+    }
+    return "неизвестная роль";
+}
+
 // Фаза партии. Её переключает ведущий, игроки только ждут свою.
 enum class Phase {
     DayTalk,
