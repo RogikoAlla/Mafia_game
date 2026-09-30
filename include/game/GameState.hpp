@@ -4,6 +4,7 @@
 
 #include <condition_variable>
 #include <mutex>
+#include <string>
 #include <vector>
 
 namespace mafia {
@@ -13,9 +14,13 @@ namespace mafia {
 class GameState {
 public:
     // Индекс 0 не используется: роль игрока i лежит в roles_[i].
-    // До раздачи ведущим все роли — мирные.
+    // До раздачи ведущим все роли — мирные, все игроки живы.
     explicit GameState(int playerCount)
-        : playerCount_(playerCount), roles_(playerCount + 1, Role::Civilian) {}
+        : playerCount_(playerCount),
+          roles_(playerCount + 1, Role::Civilian),
+          alive_(playerCount + 1, 1),
+          talks_(playerCount + 1),
+          votes_(playerCount + 1, 0) {}
 
     GameState(const GameState&) = delete;  // не копируем
     GameState& operator=(const GameState&) = delete; // не присваиваем другому объекту GameState                                    
@@ -26,6 +31,10 @@ public:
         phase_ = phase;
         round_ = round;
         acted_ = 0;
+        for (int id = 1; id <= playerCount_; ++id) {
+            talks_[id].clear();
+            votes_[id] = 0;
+        }
         if (phase == Phase::Finished) {
             finished_ = true;
         }
@@ -84,6 +93,63 @@ public:
     bool openAnnouncements() const { return openAnnouncements_; }
     bool fullLog() const { return fullLog_; }
 
+    bool alive(int playerId) const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return alive_[playerId] != 0;
+    }
+
+    // Мёртвый ход не записывает, но отмечает: барьер ведущего считает все места.
+    void submitTalk(int playerId, const std::string& text) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (alive_[playerId] != 0) {
+            talks_[playerId] = text;
+        }
+        ++acted_;
+        condition_.notify_all();
+    }
+
+    // Голос принимается только за другого живого. Неверный голос остаётся 0.
+    void submitVote(int playerId, int targetId) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        const bool valid = alive_[playerId] != 0 && targetId >= 1 && targetId <= playerCount_ &&
+                           alive_[targetId] != 0 && targetId != playerId;
+        if (valid) {
+            votes_[playerId] = targetId;
+        }
+        ++acted_;
+        condition_.notify_all();
+    }
+
+    // Строгое большинство исключает цель. Ничья и пустой подсчёт никого не выбывают.
+    int resolveDayVote() {
+        std::lock_guard<std::mutex> lock(mutex_);
+        std::vector<int> tally(playerCount_ + 1, 0);
+        for (int voter = 1; voter <= playerCount_; ++voter) {
+            const int target = votes_[voter];
+            if (target >= 1 && target <= playerCount_) {
+                ++tally[target];
+            }
+        }
+
+        int bestId = 0;
+        int bestCount = 0;
+        bool tie = false;
+        for (int id = 1; id <= playerCount_; ++id) {
+            if (tally[id] > bestCount) {
+                bestCount = tally[id];
+                bestId = id;
+                tie = false;
+            } else if (tally[id] == bestCount && bestCount > 0) {
+                tie = true;
+            }
+        }
+        if (tie || bestId == 0) {
+            return 0;
+        }
+        alive_[bestId] = 0;
+        return bestId;
+    }
+
 private:
     Phase phase_ = Phase::Finished;
     int round_ = 0;
@@ -93,6 +159,9 @@ private:
     bool openAnnouncements_ = false;
     bool fullLog_ = false;
     std::vector<Role> roles_;
+    std::vector<char> alive_;
+    std::vector<std::string> talks_;
+    std::vector<int> votes_;
 
     mutable std::mutex mutex_;
     std::condition_variable condition_;
