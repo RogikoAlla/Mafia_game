@@ -93,7 +93,13 @@ void Mafia::actNight() {
         state_->markActed();
         return;
     }
-    const int target = firstAliveExcept(state_, playerId_, Role::Mafia, true);
+    std::vector<int> candidates;
+    for (int id = 1; id <= state_->playerCount(); ++id) {
+        if (state_->alive(id) && state_->role(id) != Role::Mafia) {
+            candidates.push_back(id);
+        }
+    }
+    const int target = state_->pickCandidate(candidates);
     logNight(state_, playerId_, "убивает", target);
     state_->submitMafiaKill(playerId_, target);
 }

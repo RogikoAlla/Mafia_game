@@ -213,6 +213,28 @@ void testSameSeedDealsTheSameRoles() {
     expect(dealWithSeed(1) != dealWithSeed(2), "разные зёрна перемешивают id по-разному");
 }
 
+void testMafiaNightSkipsMafia() {
+    mafia::SharedPtr<mafia::GameState> state(new mafia::GameState(4));
+    state->assignRole(1, mafia::Role::Mafia);
+    state->assignRole(2, mafia::Role::Mafia);
+    state->assignRole(3, mafia::Role::Civilian);
+    state->assignRole(4, mafia::Role::Civilian);
+    state->seedChoices(3);
+    mafia::Mafia boss(state, 1);
+    int shots = 0;
+    for (int round = 1; round <= 4; ++round) {
+        state->beginPhase(mafia::Phase::Night, round);
+        boss.actNight();
+        const mafia::NightResult night = state->resolveNight();
+        if (night.mafiaTarget == 0) {
+            continue;
+        }
+        ++shots;
+        expect(state->role(night.mafiaTarget) != mafia::Role::Mafia, "мафия не стреляет в мафию");
+    }
+    expect(shots > 0, "босс мафии сделал выстрел");
+}
+
 void testMafiaDoesNotVoteForMafia() {
     mafia::SharedPtr<mafia::GameState> state(new mafia::GameState(4));
     state->assignRole(1, mafia::Role::Mafia);
@@ -245,6 +267,7 @@ int main() {
 
     testDayVote();
     testMafiaDoesNotVoteForMafia();
+    testMafiaNightSkipsMafia();
     testNight();
     testSameSeedDealsTheSameRoles();
     testDealForTenPlayers();
