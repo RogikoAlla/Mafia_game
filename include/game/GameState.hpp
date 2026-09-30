@@ -4,6 +4,7 @@
 
 #include <condition_variable>
 #include <mutex>
+#include <random>
 #include <string>
 #include <vector>
 
@@ -111,6 +112,22 @@ public:
 
     bool openAnnouncements() const { return openAnnouncements_; }
     bool fullLog() const { return fullLog_; }
+
+    // Зерно выбора целей. По умолчанию 1, игра в main задаёт своё.
+    void seedChoices(unsigned seed) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        rng_.seed(seed);
+    }
+
+    // Случайный элемент списка. Пустой список — 0.
+    int pickCandidate(const std::vector<int>& candidates) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (candidates.empty()) {
+            return 0;
+        }
+        std::uniform_int_distribution<int> dist(0, static_cast<int>(candidates.size()) - 1);
+        return candidates[static_cast<std::size_t>(dist(rng_))];
+    }
 
     bool alive(int playerId) const {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -336,6 +353,7 @@ private:
     bool commissionerShoots_ = false;
     std::vector<char> inspected_;
     std::vector<Role> inspectedAs_;
+    std::mt19937 rng_{1};
 
     mutable std::mutex mutex_;
     std::condition_variable condition_;
