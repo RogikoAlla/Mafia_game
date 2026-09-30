@@ -52,8 +52,10 @@ int main(int argc, char* argv[]) {
     state->setOpenAnnouncements(openAnnouncements);
     state->setFullLog(fullLog);
 
-    mafia::Host host(state);
     std::random_device device;
+    state->seedChoices(device());
+
+    mafia::Host host(state);
     std::mt19937 generator(device());
     host.dealRoles(generator);
 
