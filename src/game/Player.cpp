@@ -58,7 +58,7 @@ void Player::vote() {
         state_->submitVote(playerId_, 0);
         return;
     }
-    const int target = chooseVoteTarget();
+    const int target = interactive_ ? readTargetId() : chooseVoteTarget();
     if (state_->fullLog()) {
         if (target == 0) {
             std::cout << "игрок " << playerId_ << ": голос не засчитан\n";
