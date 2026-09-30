@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <string>
+#include <vector>
 
 namespace mafia {
 namespace {
@@ -26,12 +27,13 @@ void Player::talk() {
 }
 
 int Player::chooseVoteTarget() const {
+    std::vector<int> candidates;
     for (int id = 1; id <= state_->playerCount(); ++id) {
         if (id != playerId_ && state_->alive(id)) {
-            return id;
+            candidates.push_back(id);
         }
     }
-    return 0;
+    return state_->pickCandidate(candidates);
 }
 
 void Player::vote() {
