@@ -178,8 +178,10 @@ void Player::run() {
             if (state_->phase() == Phase::Finished) {
                 return;
             }
-            std::cout << "игрок " << playerId_ << ": раунд " << round << ", " << phaseName(phase)
-                      << '\n';
+            if (state_->fullLog()) {
+                std::cout << "игрок " << playerId_ << ": раунд " << round << ", " << phaseName(phase)
+                          << '\n';
+            }
             switch (phase) {
             case Phase::DayTalk:
                 talk();
