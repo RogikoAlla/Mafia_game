@@ -213,6 +213,23 @@ void testSameSeedDealsTheSameRoles() {
     expect(dealWithSeed(1) != dealWithSeed(2), "разные зёрна перемешивают id по-разному");
 }
 
+void testDoctorDoesNotRepeatHeal() {
+    mafia::SharedPtr<mafia::GameState> state(new mafia::GameState(3));
+    state->assignRole(1, mafia::Role::Doctor);
+    state->assignRole(2, mafia::Role::Civilian);
+    state->assignRole(3, mafia::Role::Civilian);
+    state->seedChoices(5);
+    mafia::Doctor doctor(state, 1);
+    state->beginPhase(mafia::Phase::Night, 1);
+    doctor.actNight();
+    const int first = state->resolveNight().doctorTarget;
+    expect(first != 0, "доктор выбрал, кого лечить");
+    state->beginPhase(mafia::Phase::Night, 2);
+    doctor.actNight();
+    const int second = state->resolveNight().doctorTarget;
+    expect(second != 0 && second != first, "доктор не лечит ту же цель две ночи подряд");
+}
+
 void testMafiaNightSkipsMafia() {
     mafia::SharedPtr<mafia::GameState> state(new mafia::GameState(4));
     state->assignRole(1, mafia::Role::Mafia);
@@ -268,6 +285,7 @@ int main() {
     testDayVote();
     testMafiaDoesNotVoteForMafia();
     testMafiaNightSkipsMafia();
+    testDoctorDoesNotRepeatHeal();
     testNight();
     testSameSeedDealsTheSameRoles();
     testDealForTenPlayers();

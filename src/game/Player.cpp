@@ -110,13 +110,13 @@ void Doctor::actNight() {
         return;
     }
     const int previous = state_->lastHeal();
-    int target = 0;
+    std::vector<int> candidates;
     for (int id = 1; id <= state_->playerCount(); ++id) {
         if (state_->alive(id) && id != previous) {
-            target = id;
-            break;
+            candidates.push_back(id);
         }
     }
+    const int target = state_->pickCandidate(candidates);
     logNight(state_, playerId_, "лечит", target);
     state_->submitHeal(playerId_, target);
 }
