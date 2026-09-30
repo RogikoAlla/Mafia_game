@@ -56,19 +56,6 @@ void Player::actNight() { state_->markActed(); }
 
 namespace {
 
-int firstAliveExcept(const SharedPtr<GameState>& state, int exceptId, Role skipRole, bool skipRoleSet) {
-    for (int id = 1; id <= state->playerCount(); ++id) {
-        if (id == exceptId || !state->alive(id)) {
-            continue;
-        }
-        if (skipRoleSet && state->role(id) == skipRole) {
-            continue;
-        }
-        return id;
-    }
-    return 0;
-}
-
 void logNight(const SharedPtr<GameState>& state, int playerId, const char* action, int target) {
     if (!state->fullLog()) {
         return;

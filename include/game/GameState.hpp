@@ -218,17 +218,6 @@ public:
         return inspectedAs_[playerId];
     }
 
-    // Младший живой игрок, уже узнанный как мафия. 0, если такого нет.
-    int knownMafia() const {
-        std::lock_guard<std::mutex> lock(mutex_);
-        for (int id = 1; id <= playerCount_; ++id) {
-            if (inspected_[id] != 0 && inspectedAs_[id] == Role::Mafia && alive_[id] != 0) {
-                return id;
-            }
-        }
-        return 0;
-    }
-
     void submitMafiaKill(int playerId, int targetId) {
         std::lock_guard<std::mutex> lock(mutex_);
         if (playerId == currentBoss() && livingTarget(playerId, targetId, false) &&
