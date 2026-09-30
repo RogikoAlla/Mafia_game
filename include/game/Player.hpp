@@ -17,8 +17,8 @@ public:
     Player(const Player&) = delete;
     Player& operator=(const Player&) = delete;
 
-    // Ждёт фазы ведущего. На обсуждении, голосовании и ночи вызывает свой ход.
-    void run(int rounds = 2);
+    // Ждёт фазы ведущего, пока партия не закончена.
+    void run();
 
     virtual void talk();
     virtual void vote();

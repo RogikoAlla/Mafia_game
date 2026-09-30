@@ -422,7 +422,7 @@ int main() {
     std::vector<std::thread> players;
     players.reserve(kPlayers);
     for (const std::unique_ptr<mafia::Player>& player : roster) {
-        players.emplace_back(&mafia::Player::run, player.get(), kRounds);
+        players.emplace_back(&mafia::Player::run, player.get());
     }
 
     std::thread hostThread(&mafia::Host::run, &host, kRounds);
