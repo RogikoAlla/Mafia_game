@@ -25,10 +25,10 @@ void Host::dealRoles(std::mt19937& generator) {
     state_->assignRole(ids[next++], Role::Maniac);
 }
 
-void Host::run(int rounds) {
+void Host::run() {
     const Phase phases[] = {Phase::DayTalk, Phase::DayVote, Phase::Night};
-
-    for (int round = 1; round <= rounds; ++round) {
+    int round = 1;
+    while (true) {
         for (Phase phase : phases) {
             std::cout << "ведущий: раунд " << round << ", фаза " << phaseName(phase) << '\n';
             state_->beginPhase(phase, round);
@@ -82,11 +82,16 @@ void Host::run(int rounds) {
                     std::cout << "ведущий: ночь без убийств\n";
                 }
             }
+            const Winner winner = state_->checkWinner();
+            if (winner != Winner::None) {
+                state_->setWinner(winner);
+                std::cout << "ведущий: победа — " << winnerName(winner) << '\n';
+                state_->beginPhase(Phase::Finished, round);
+                return;
+            }
         }
+        ++round;
     }
-
-    std::cout << "ведущий: партия закончена\n";
-    state_->beginPhase(Phase::Finished, rounds);
 }
 
 }  // namespace mafia

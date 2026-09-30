@@ -391,7 +391,6 @@ int main() {
     testDealForTenPlayers();
 
     constexpr int kPlayers = 5;
-    constexpr int kRounds = 2;
 
     mafia::SharedPtr<mafia::GameState> state(new mafia::GameState(kPlayers));
     mafia::Host host(state);
@@ -425,14 +424,14 @@ int main() {
         players.emplace_back(&mafia::Player::run, player.get());
     }
 
-    std::thread hostThread(&mafia::Host::run, &host, kRounds);
+    std::thread hostThread(&mafia::Host::run, &host);
     hostThread.join();
     for (std::thread& player : players) {
         player.join();
     }
 
-    expect(state->phase() == mafia::Phase::Finished, "после двух раундов фаза — конец");
-    expect(state->round() == kRounds, "ведущий дошёл до второго раунда");
+    expect(state->phase() == mafia::Phase::Finished, "партия закончилась");
+    expect(state->winner() != mafia::Winner::None, "есть победитель");
     expect(state.get() != nullptr, "партия жива после join");
 
     for (int playerId = 1; playerId <= kPlayers; ++playerId) {
