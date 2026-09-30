@@ -27,6 +27,28 @@ inline const char* roleName(Role role) {
     return "неизвестная роль";
 }
 
+// Кто выиграл. None — партия ещё идёт.
+enum class Winner {
+    None,
+    Town,
+    Mafia,
+    Maniac,
+};
+
+inline const char* winnerName(Winner winner) {
+    switch (winner) {
+    case Winner::None:
+        return "никто";
+    case Winner::Town:
+        return "мирные";
+    case Winner::Mafia:
+        return "мафия";
+    case Winner::Maniac:
+        return "маньяк";
+    }
+    return "неизвестный победитель";
+}
+
 // Фаза партии. Её переключает ведущий, игроки только ждут свою.
 enum class Phase {
     DayTalk,
