@@ -28,6 +28,9 @@ public:
     bool interactive() const { return interactive_; }
 
 protected:
+    // Наименьший живой id, кроме себя. 0, если цели нет.
+    int chooseVoteTarget() const;
+
     SharedPtr<GameState> state_;
     int playerId_ = 0;
     bool interactive_ = false;
