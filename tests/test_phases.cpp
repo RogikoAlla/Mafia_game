@@ -7,6 +7,7 @@
 #include <iostream>
 #include <memory>
 #include <random>
+#include <sstream>
 #include <thread>
 #include <vector>
 
@@ -174,6 +175,29 @@ void testAnnouncements() {
     const std::string closedMafia = mafia::nightVictimLine(1, mafia::Role::Mafia, false);
     expect(std::strstr(closedMafia.c_str(), "мафия") != nullptr, "ночная жертва-мафия показывает лагерь");
     expect(std::strstr(closedMafia.c_str(), "убит") == nullptr, "закрытая ночь не говорит убит");
+}
+
+void testHumanReadsStdin() {
+    mafia::SharedPtr<mafia::GameState> state(new mafia::GameState(4));
+    state->assignRole(1, mafia::Role::Mafia);
+    state->assignRole(2, mafia::Role::Mafia);
+    state->assignRole(3, mafia::Role::Civilian);
+    state->assignRole(4, mafia::Role::Civilian);
+    state->setInteractivePlayer(1);
+    expect(state->nightChoiceRequired(1), "босс мафии ночью выбирает цель");
+    expect(!state->nightChoiceRequired(2), "рядовая мафия ночью молчит");
+    expect(!state->nightChoiceRequired(3), "мирный ночью молчит");
+
+    auto human = mafia::makePlayer(state, 1, true);
+    std::istringstream input("я мирный\n3\n4\n");
+    std::streambuf* previous = std::cin.rdbuf(input.rdbuf());
+    human->talk();
+    human->vote();
+    expect(state->voteOf(1) == 3, "человек голосует за введённый номер");
+    human->actNight();
+    const mafia::NightResult night = state->resolveNight();
+    expect(night.mafiaTarget == 4, "босс стреляет во введённый номер");
+    std::cin.rdbuf(previous);
 }
 
 void testNight() {
@@ -395,6 +419,7 @@ int main() {
 
     testWinner();
     testAnnouncements();
+    testHumanReadsStdin();
     testDayVote();
     testMafiaDoesNotVoteForMafia();
     testMafiaNightSkipsMafia();
