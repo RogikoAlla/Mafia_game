@@ -77,12 +77,21 @@ public:
 
     Role role(int playerId) const { return roles_[playerId]; }
 
+    // Режим запуска задаётся до нитей: закрытые объявления и краткий лог.
+    void setOpenAnnouncements(bool open) { openAnnouncements_ = open; }
+    void setFullLog(bool full) { fullLog_ = full; }
+
+    bool openAnnouncements() const { return openAnnouncements_; }
+    bool fullLog() const { return fullLog_; }
+
 private:
     Phase phase_ = Phase::Finished;
     int round_ = 0;
     int acted_ = 0;
     int playerCount_ = 0;
     bool finished_ = false;
+    bool openAnnouncements_ = false;
+    bool fullLog_ = false;
     std::vector<Role> roles_;
 
     mutable std::mutex mutex_;
