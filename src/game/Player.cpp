@@ -78,6 +78,16 @@ void logNight(const SharedPtr<GameState>& state, int playerId, const char* actio
 
 }  // namespace
 
+int Mafia::chooseVoteTarget() const {
+    std::vector<int> candidates;
+    for (int id = 1; id <= state_->playerCount(); ++id) {
+        if (id != playerId_ && state_->alive(id) && state_->role(id) != Role::Mafia) {
+            candidates.push_back(id);
+        }
+    }
+    return state_->pickCandidate(candidates);
+}
+
 void Mafia::actNight() {
     if (!state_->alive(playerId_) || state_->mafiaBoss() != playerId_) {
         state_->markActed();

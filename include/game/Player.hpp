@@ -40,6 +40,10 @@ class Mafia : public Player {
 public:
     using Player::Player;
     void actNight() override;
+
+protected:
+    // Случайный живой не из мафии.
+    int chooseVoteTarget() const override;
 };
 
 class Civilian : public Player {

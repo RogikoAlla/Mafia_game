@@ -129,6 +129,11 @@ public:
         return candidates[static_cast<std::size_t>(dist(rng_))];
     }
 
+    int voteOf(int playerId) const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return votes_[playerId];
+    }
+
     bool alive(int playerId) const {
         std::lock_guard<std::mutex> lock(mutex_);
         return alive_[playerId] != 0;
