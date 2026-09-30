@@ -195,6 +195,24 @@ void testNight() {
     expect(selfKill.acted() == 1, "неверный ночной ход отмечается");
 }
 
+std::vector<mafia::Role> dealWithSeed(unsigned seed) {
+    mafia::SharedPtr<mafia::GameState> state(new mafia::GameState(10));
+    mafia::Host host(state);
+    std::mt19937 generator(seed);
+    host.dealRoles(generator);
+    std::vector<mafia::Role> roles;
+    roles.reserve(10);
+    for (int id = 1; id <= 10; ++id) {
+        roles.push_back(state->role(id));
+    }
+    return roles;
+}
+
+void testSameSeedDealsTheSameRoles() {
+    expect(dealWithSeed(1) == dealWithSeed(1), "одно зерно даёт одну раздачу");
+    expect(dealWithSeed(1) != dealWithSeed(2), "разные зёрна перемешивают id по-разному");
+}
+
 void testDealForTenPlayers() {
     mafia::SharedPtr<mafia::GameState> state(new mafia::GameState(10));
     mafia::Host host(state);
@@ -211,6 +229,7 @@ int main() {
 
     testDayVote();
     testNight();
+    testSameSeedDealsTheSameRoles();
     testDealForTenPlayers();
 
     constexpr int kPlayers = 5;
