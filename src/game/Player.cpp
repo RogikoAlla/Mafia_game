@@ -97,13 +97,18 @@ void Mafia::actNight() {
         state_->markActed();
         return;
     }
-    std::vector<int> candidates;
-    for (int id = 1; id <= state_->playerCount(); ++id) {
-        if (state_->alive(id) && state_->role(id) != Role::Mafia) {
-            candidates.push_back(id);
+    int target = 0;
+    if (interactive_) {
+        target = readTargetId();
+    } else {
+        std::vector<int> candidates;
+        for (int id = 1; id <= state_->playerCount(); ++id) {
+            if (state_->alive(id) && state_->role(id) != Role::Mafia) {
+                candidates.push_back(id);
+            }
         }
+        target = state_->pickCandidate(candidates);
     }
-    const int target = state_->pickCandidate(candidates);
     logNight(state_, playerId_, "убивает", target);
     state_->submitMafiaKill(playerId_, target);
 }
@@ -113,14 +118,19 @@ void Doctor::actNight() {
         state_->markActed();
         return;
     }
-    const int previous = state_->lastHeal();
-    std::vector<int> candidates;
-    for (int id = 1; id <= state_->playerCount(); ++id) {
-        if (state_->alive(id) && id != previous) {
-            candidates.push_back(id);
+    int target = 0;
+    if (interactive_) {
+        target = readTargetId();
+    } else {
+        const int previous = state_->lastHeal();
+        std::vector<int> candidates;
+        for (int id = 1; id <= state_->playerCount(); ++id) {
+            if (state_->alive(id) && id != previous) {
+                candidates.push_back(id);
+            }
         }
+        target = state_->pickCandidate(candidates);
     }
-    const int target = state_->pickCandidate(candidates);
     logNight(state_, playerId_, "лечит", target);
     state_->submitHeal(playerId_, target);
 }
@@ -143,28 +153,30 @@ void Commissioner::actNight() {
             unchecked.push_back(id);
         }
     }
-    if (!knownMafia.empty()) {
-        const int target = state_->pickCandidate(knownMafia);
+    const bool shoot = !knownMafia.empty() || unchecked.empty();
+    int target = 0;
+    if (interactive_) {
+        target = readTargetId();
+    } else if (!knownMafia.empty()) {
+        target = state_->pickCandidate(knownMafia);
+    } else if (!unchecked.empty()) {
+        target = state_->pickCandidate(unchecked);
+    } else {
+        std::vector<int> others;
+        for (int id = 1; id <= state_->playerCount(); ++id) {
+            if (id != playerId_ && state_->alive(id)) {
+                others.push_back(id);
+            }
+        }
+        target = state_->pickCandidate(others);
+    }
+    if (shoot) {
         logNight(state_, playerId_, "стреляет в", target);
         state_->submitShot(playerId_, target);
         return;
     }
-    if (!unchecked.empty()) {
-        const int target = state_->pickCandidate(unchecked);
-        logNight(state_, playerId_, "проверяет", target);
-        state_->submitCheck(playerId_, target);
-        return;
-    }
-
-    std::vector<int> others;
-    for (int id = 1; id <= state_->playerCount(); ++id) {
-        if (id != playerId_ && state_->alive(id)) {
-            others.push_back(id);
-        }
-    }
-    const int target = state_->pickCandidate(others);
-    logNight(state_, playerId_, "стреляет в", target);
-    state_->submitShot(playerId_, target);
+    logNight(state_, playerId_, "проверяет", target);
+    state_->submitCheck(playerId_, target);
 }
 
 void Maniac::actNight() {
@@ -172,13 +184,18 @@ void Maniac::actNight() {
         state_->markActed();
         return;
     }
-    std::vector<int> candidates;
-    for (int id = 1; id <= state_->playerCount(); ++id) {
-        if (id != playerId_ && state_->alive(id)) {
-            candidates.push_back(id);
+    int target = 0;
+    if (interactive_) {
+        target = readTargetId();
+    } else {
+        std::vector<int> candidates;
+        for (int id = 1; id <= state_->playerCount(); ++id) {
+            if (id != playerId_ && state_->alive(id)) {
+                candidates.push_back(id);
+            }
         }
+        target = state_->pickCandidate(candidates);
     }
-    const int target = state_->pickCandidate(candidates);
     logNight(state_, playerId_, "убивает", target);
     state_->submitManiacKill(playerId_, target);
 }
