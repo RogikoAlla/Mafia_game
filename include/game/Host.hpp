@@ -3,6 +3,8 @@
 #include "smart_ptr/SharedPtr.hpp"
 #include "game/GameState.hpp"
 
+#include <random>
+
 namespace mafia {
 
 // Ведущий не наследник игрока. Раздаёт роли и открывает фазы.
@@ -12,7 +14,8 @@ public:
     explicit Host(SharedPtr<GameState> state) : state_(std::move(state)) {}
 
     // k = 3: мафии max(1, N/k). Дальше по одному: доктор, комиссар, маньяк. Хвост — мирные.
-    void dealRoles();
+    // Id перемешиваются генератором, состав ролей от этого не меняется.
+    void dealRoles(std::mt19937& generator);
 
     void run(int rounds = 2);
 
