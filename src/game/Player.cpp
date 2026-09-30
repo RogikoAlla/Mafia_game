@@ -1,6 +1,7 @@
 #include "game/Player.hpp"
 
 #include <iostream>
+#include <string>
 
 namespace mafia {
 namespace {
@@ -12,9 +13,42 @@ const Phase kPhases[] = {Phase::DayTalk, Phase::DayVote, Phase::Night};
 Player::Player(SharedPtr<GameState> state, int playerId, bool interactive)
     : state_(std::move(state)), playerId_(playerId), interactive_(interactive) {}
 
-void Player::talk() { state_->markActed(); }
+void Player::talk() {
+    if (!state_->alive(playerId_)) {
+        state_->submitTalk(playerId_, "");
+        return;
+    }
+    const std::string text = "я не мафия";
+    if (state_->fullLog()) {
+        std::cout << "игрок " << playerId_ << ": " << text << '\n';
+    }
+    state_->submitTalk(playerId_, text);
+}
 
-void Player::vote() { state_->markActed(); }
+int Player::chooseVoteTarget() const {
+    for (int id = 1; id <= state_->playerCount(); ++id) {
+        if (id != playerId_ && state_->alive(id)) {
+            return id;
+        }
+    }
+    return 0;
+}
+
+void Player::vote() {
+    if (!state_->alive(playerId_)) {
+        state_->submitVote(playerId_, 0);
+        return;
+    }
+    const int target = chooseVoteTarget();
+    if (state_->fullLog()) {
+        if (target == 0) {
+            std::cout << "игрок " << playerId_ << ": голос не засчитан\n";
+        } else {
+            std::cout << "игрок " << playerId_ << " голосует за " << target << '\n';
+        }
+    }
+    state_->submitVote(playerId_, target);
+}
 
 void Player::actNight() { state_->markActed(); }
 
