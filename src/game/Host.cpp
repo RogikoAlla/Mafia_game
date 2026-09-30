@@ -34,6 +34,47 @@ void Host::run(int rounds) {
                     std::cout << "ведущий: исключён игрок " << eliminated << '\n';
                 }
             }
+            if (phase == Phase::Night) {
+                const NightResult night = state_->resolveNight();
+                if (state_->fullLog()) {
+                    if (night.mafiaTarget != 0) {
+                        std::cout << "ведущий: мафия выбирает игрока " << night.mafiaTarget << '\n';
+                    }
+                    if (night.maniacTarget != 0) {
+                        std::cout << "ведущий: маньяк выбирает игрока " << night.maniacTarget << '\n';
+                    }
+                    if (night.doctorTarget != 0) {
+                        std::cout << "ведущий: доктор лечит игрока " << night.doctorTarget << '\n';
+                    }
+                    if (night.commissionerTarget != 0) {
+                        std::cout << "ведущий: комиссар "
+                                  << (night.commissionerShot ? "стреляет в игрока "
+                                                             : "проверяет игрока ")
+                                  << night.commissionerTarget << '\n';
+                    }
+                }
+                const int killed[] = {night.mafiaKilled, night.maniacKilled, night.commissionerKilled};
+                bool any = false;
+                for (int index = 0; index < 3; ++index) {
+                    const int id = killed[index];
+                    if (id == 0) {
+                        continue;
+                    }
+                    bool already = false;
+                    for (int earlier = 0; earlier < index; ++earlier) {
+                        if (killed[earlier] == id) {
+                            already = true;
+                        }
+                    }
+                    if (!already) {
+                        std::cout << "ведущий: ночью убит игрок " << id << '\n';
+                        any = true;
+                    }
+                }
+                if (!any) {
+                    std::cout << "ведущий: ночь без убийств\n";
+                }
+            }
         }
     }
 

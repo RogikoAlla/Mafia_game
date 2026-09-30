@@ -69,6 +69,83 @@ void testDayVote() {
     expect(deadVote.alive(2) && deadVote.alive(3), "живые при ничьей остаются");
 }
 
+void testNight() {
+    mafia::GameState saved(5);
+    saved.assignRole(1, mafia::Role::Mafia);
+    saved.assignRole(2, mafia::Role::Mafia);
+    saved.assignRole(3, mafia::Role::Doctor);
+    saved.assignRole(4, mafia::Role::Commissioner);
+    saved.assignRole(5, mafia::Role::Maniac);
+    saved.submitMafiaKill(2, 3);
+    saved.submitMafiaKill(1, 3);
+    saved.submitHeal(3, 3);
+    saved.submitShot(4, 3);
+    saved.submitManiacKill(5, 3);
+    const mafia::NightResult savedNight = saved.resolveNight();
+    expect(savedNight.mafiaKilled == 0, "доктор спасает от мафии");
+    expect(savedNight.maniacKilled == 0, "доктор спасает от маньяка");
+    expect(savedNight.commissionerKilled == 0, "доктор спасает от комиссара");
+    expect(saved.alive(3), "вылеченный доктор жив");
+
+    mafia::GameState boss(4);
+    boss.assignRole(1, mafia::Role::Mafia);
+    boss.assignRole(2, mafia::Role::Mafia);
+    boss.assignRole(3, mafia::Role::Civilian);
+    boss.assignRole(4, mafia::Role::Civilian);
+    boss.submitMafiaKill(2, 3);
+    expect(boss.resolveNight().mafiaKilled == 0, "не босс не назначает убийство");
+    expect(boss.alive(3), "цель не босса жива");
+    boss.beginPhase(mafia::Phase::Night, 2);
+    boss.submitMafiaKill(1, 2);
+    expect(boss.resolveNight().mafiaKilled == 0, "мафия не убивает свою");
+    expect(boss.alive(2), "второй мафиози жив");
+
+    mafia::GameState check(5);
+    check.assignRole(1, mafia::Role::Mafia);
+    check.assignRole(2, mafia::Role::Doctor);
+    check.assignRole(3, mafia::Role::Commissioner);
+    check.assignRole(4, mafia::Role::Maniac);
+    check.assignRole(5, mafia::Role::Civilian);
+    check.submitCheck(3, 4);
+    check.resolveNight();
+    expect(check.inspected(4), "комиссар проверил маньяка");
+    expect(check.inspectedAs(4) == mafia::Role::Civilian, "маньяк выглядит мирным");
+    check.beginPhase(mafia::Phase::Night, 2);
+    check.submitCheck(3, 1);
+    check.resolveNight();
+    expect(check.inspectedAs(1) == mafia::Role::Mafia, "комиссар узнаёт мафию");
+    check.beginPhase(mafia::Phase::Night, 3);
+    check.submitShot(3, 1);
+    check.submitHeal(2, 5);
+    check.submitManiacKill(4, 5);
+    const mafia::NightResult shot = check.resolveNight();
+    expect(shot.commissionerKilled == 1, "комиссар стреляет в найденную мафию");
+    expect(!check.alive(1), "мафия мертва");
+    expect(shot.maniacKilled == 0, "лечение спасает мирного от маньяка");
+    expect(check.alive(5), "вылеченный мирный жив");
+
+    mafia::GameState repeat(3);
+    repeat.assignRole(1, mafia::Role::Mafia);
+    repeat.assignRole(2, mafia::Role::Doctor);
+    repeat.assignRole(3, mafia::Role::Civilian);
+    repeat.submitHeal(2, 3);
+    repeat.submitMafiaKill(1, 3);
+    expect(repeat.resolveNight().mafiaKilled == 0, "первое лечение спасает");
+    repeat.beginPhase(mafia::Phase::Night, 2);
+    repeat.submitHeal(2, 3);
+    repeat.submitMafiaKill(1, 3);
+    expect(repeat.resolveNight().mafiaKilled == 3, "повторное лечение не спасает");
+    expect(!repeat.alive(3), "игрок 3 убит на вторую ночь");
+
+    mafia::GameState selfKill(2);
+    selfKill.assignRole(1, mafia::Role::Maniac);
+    selfKill.assignRole(2, mafia::Role::Civilian);
+    selfKill.submitManiacKill(1, 1);
+    expect(selfKill.resolveNight().maniacKilled == 0, "маньяк не убивает себя");
+    expect(selfKill.alive(1), "маньяк жив");
+    expect(selfKill.acted() == 1, "неверный ночной ход отмечается");
+}
+
 void testDealForTenPlayers() {
     mafia::SharedPtr<mafia::GameState> state(new mafia::GameState(10));
     mafia::Host host(state);
@@ -90,6 +167,7 @@ int main() {
 #endif
 
     testDayVote();
+    testNight();
     testDealForTenPlayers();
 
     constexpr int kPlayers = 5;
