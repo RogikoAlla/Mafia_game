@@ -213,6 +213,114 @@ void testSameSeedDealsTheSameRoles() {
     expect(dealWithSeed(1) != dealWithSeed(2), "разные зёрна перемешивают id по-разному");
 }
 
+void testCommissionerChecksThenShootsKnownMafia() {
+    mafia::SharedPtr<mafia::GameState> state(new mafia::GameState(3));
+    state->assignRole(1, mafia::Role::Commissioner);
+    state->assignRole(2, mafia::Role::Mafia);
+    state->assignRole(3, mafia::Role::Civilian);
+    state->seedChoices(4);
+    mafia::Commissioner commissioner(state, 1);
+
+    state->beginPhase(mafia::Phase::Night, 1);
+    commissioner.actNight();
+    const mafia::NightResult first = state->resolveNight();
+    expect(!first.commissionerShot, "без знакомой мафии комиссар проверяет");
+    expect(first.commissionerTarget == 2 || first.commissionerTarget == 3,
+           "комиссар проверяет другого живого");
+
+    state->beginPhase(mafia::Phase::Night, 2);
+    commissioner.actNight();
+    const mafia::NightResult second = state->resolveNight();
+    if (first.commissionerTarget == 2) {
+        expect(second.commissionerShot && second.commissionerTarget == 2,
+               "знакомую мафию комиссар застреливает");
+        return;
+    }
+    expect(!second.commissionerShot && second.commissionerTarget == 2,
+           "следующей ночью комиссар проверяет оставшегося");
+    state->beginPhase(mafia::Phase::Night, 3);
+    commissioner.actNight();
+    const mafia::NightResult third = state->resolveNight();
+    expect(third.commissionerShot && third.commissionerTarget == 2,
+           "после проверки комиссар стреляет в мафию");
+}
+
+void testManiacPicksAnotherPlayer() {
+    mafia::SharedPtr<mafia::GameState> state(new mafia::GameState(3));
+    state->assignRole(1, mafia::Role::Maniac);
+    state->assignRole(2, mafia::Role::Civilian);
+    state->assignRole(3, mafia::Role::Mafia);
+    state->seedChoices(9);
+    mafia::Maniac maniac(state, 1);
+    int shots = 0;
+    for (int round = 1; round <= 4; ++round) {
+        state->beginPhase(mafia::Phase::Night, round);
+        maniac.actNight();
+        const int target = state->resolveNight().maniacTarget;
+        if (target == 0) {
+            continue;
+        }
+        ++shots;
+        expect(target != 1, "маньяк не стреляет в себя");
+    }
+    expect(shots > 0, "маньяк сделал выстрел");
+}
+
+void testDoctorDoesNotRepeatHeal() {
+    mafia::SharedPtr<mafia::GameState> state(new mafia::GameState(3));
+    state->assignRole(1, mafia::Role::Doctor);
+    state->assignRole(2, mafia::Role::Civilian);
+    state->assignRole(3, mafia::Role::Civilian);
+    state->seedChoices(5);
+    mafia::Doctor doctor(state, 1);
+    state->beginPhase(mafia::Phase::Night, 1);
+    doctor.actNight();
+    const int first = state->resolveNight().doctorTarget;
+    expect(first != 0, "доктор выбрал, кого лечить");
+    state->beginPhase(mafia::Phase::Night, 2);
+    doctor.actNight();
+    const int second = state->resolveNight().doctorTarget;
+    expect(second != 0 && second != first, "доктор не лечит ту же цель две ночи подряд");
+}
+
+void testMafiaNightSkipsMafia() {
+    mafia::SharedPtr<mafia::GameState> state(new mafia::GameState(4));
+    state->assignRole(1, mafia::Role::Mafia);
+    state->assignRole(2, mafia::Role::Mafia);
+    state->assignRole(3, mafia::Role::Civilian);
+    state->assignRole(4, mafia::Role::Civilian);
+    state->seedChoices(3);
+    mafia::Mafia boss(state, 1);
+    int shots = 0;
+    for (int round = 1; round <= 4; ++round) {
+        state->beginPhase(mafia::Phase::Night, round);
+        boss.actNight();
+        const mafia::NightResult night = state->resolveNight();
+        if (night.mafiaTarget == 0) {
+            continue;
+        }
+        ++shots;
+        expect(state->role(night.mafiaTarget) != mafia::Role::Mafia, "мафия не стреляет в мафию");
+    }
+    expect(shots > 0, "босс мафии сделал выстрел");
+}
+
+void testMafiaDoesNotVoteForMafia() {
+    mafia::SharedPtr<mafia::GameState> state(new mafia::GameState(4));
+    state->assignRole(1, mafia::Role::Mafia);
+    state->assignRole(2, mafia::Role::Mafia);
+    state->assignRole(3, mafia::Role::Civilian);
+    state->assignRole(4, mafia::Role::Civilian);
+    state->seedChoices(7);
+    mafia::Mafia voter(state, 1);
+    for (int round = 1; round <= 12; ++round) {
+        state->beginPhase(mafia::Phase::DayVote, round);
+        voter.vote();
+        const int target = state->voteOf(1);
+        expect(target == 3 || target == 4, "мафия голосует не за мафию");
+    }
+}
+
 void testDealForTenPlayers() {
     mafia::SharedPtr<mafia::GameState> state(new mafia::GameState(10));
     mafia::Host host(state);
@@ -228,6 +336,11 @@ int main() {
 #endif
 
     testDayVote();
+    testMafiaDoesNotVoteForMafia();
+    testMafiaNightSkipsMafia();
+    testDoctorDoesNotRepeatHeal();
+    testManiacPicksAnotherPlayer();
+    testCommissionerChecksThenShootsKnownMafia();
     testNight();
     testSameSeedDealsTheSameRoles();
     testDealForTenPlayers();

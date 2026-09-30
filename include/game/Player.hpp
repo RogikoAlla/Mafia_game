@@ -28,8 +28,8 @@ public:
     bool interactive() const { return interactive_; }
 
 protected:
-    // Наименьший живой id, кроме себя. 0, если цели нет.
-    int chooseVoteTarget() const;
+    // Случайный живой id, кроме себя. 0, если цели нет.
+    virtual int chooseVoteTarget() const;
 
     SharedPtr<GameState> state_;
     int playerId_ = 0;
@@ -40,6 +40,10 @@ class Mafia : public Player {
 public:
     using Player::Player;
     void actNight() override;
+
+protected:
+    // Случайный живой не из мафии.
+    int chooseVoteTarget() const override;
 };
 
 class Civilian : public Player {

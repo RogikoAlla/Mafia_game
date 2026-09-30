@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <string>
+#include <vector>
 
 namespace mafia {
 namespace {
@@ -26,12 +27,13 @@ void Player::talk() {
 }
 
 int Player::chooseVoteTarget() const {
+    std::vector<int> candidates;
     for (int id = 1; id <= state_->playerCount(); ++id) {
         if (id != playerId_ && state_->alive(id)) {
-            return id;
+            candidates.push_back(id);
         }
     }
-    return 0;
+    return state_->pickCandidate(candidates);
 }
 
 void Player::vote() {
@@ -54,19 +56,6 @@ void Player::actNight() { state_->markActed(); }
 
 namespace {
 
-int firstAliveExcept(const SharedPtr<GameState>& state, int exceptId, Role skipRole, bool skipRoleSet) {
-    for (int id = 1; id <= state->playerCount(); ++id) {
-        if (id == exceptId || !state->alive(id)) {
-            continue;
-        }
-        if (skipRoleSet && state->role(id) == skipRole) {
-            continue;
-        }
-        return id;
-    }
-    return 0;
-}
-
 void logNight(const SharedPtr<GameState>& state, int playerId, const char* action, int target) {
     if (!state->fullLog()) {
         return;
@@ -76,12 +65,28 @@ void logNight(const SharedPtr<GameState>& state, int playerId, const char* actio
 
 }  // namespace
 
+int Mafia::chooseVoteTarget() const {
+    std::vector<int> candidates;
+    for (int id = 1; id <= state_->playerCount(); ++id) {
+        if (id != playerId_ && state_->alive(id) && state_->role(id) != Role::Mafia) {
+            candidates.push_back(id);
+        }
+    }
+    return state_->pickCandidate(candidates);
+}
+
 void Mafia::actNight() {
     if (!state_->alive(playerId_) || state_->mafiaBoss() != playerId_) {
         state_->markActed();
         return;
     }
-    const int target = firstAliveExcept(state_, playerId_, Role::Mafia, true);
+    std::vector<int> candidates;
+    for (int id = 1; id <= state_->playerCount(); ++id) {
+        if (state_->alive(id) && state_->role(id) != Role::Mafia) {
+            candidates.push_back(id);
+        }
+    }
+    const int target = state_->pickCandidate(candidates);
     logNight(state_, playerId_, "убивает", target);
     state_->submitMafiaKill(playerId_, target);
 }
@@ -92,13 +97,13 @@ void Doctor::actNight() {
         return;
     }
     const int previous = state_->lastHeal();
-    int target = 0;
+    std::vector<int> candidates;
     for (int id = 1; id <= state_->playerCount(); ++id) {
         if (state_->alive(id) && id != previous) {
-            target = id;
-            break;
+            candidates.push_back(id);
         }
     }
+    const int target = state_->pickCandidate(candidates);
     logNight(state_, playerId_, "лечит", target);
     state_->submitHeal(playerId_, target);
 }
@@ -108,27 +113,41 @@ void Commissioner::actNight() {
         state_->markActed();
         return;
     }
-    const int mafia = state_->knownMafia();
-    if (mafia != 0) {
-        logNight(state_, playerId_, "стреляет в", mafia);
-        state_->submitShot(playerId_, mafia);
-        return;
-    }
-    int target = 0;
+
+    std::vector<int> knownMafia;
+    std::vector<int> unchecked;
     for (int id = 1; id <= state_->playerCount(); ++id) {
-        if (id != playerId_ && state_->alive(id) && !state_->inspected(id)) {
-            target = id;
-            break;
+        if (!state_->alive(id) || id == playerId_) {
+            continue;
+        }
+        if (state_->inspected(id) && state_->inspectedAs(id) == Role::Mafia) {
+            knownMafia.push_back(id);
+        } else if (!state_->inspected(id)) {
+            unchecked.push_back(id);
         }
     }
-    if (target == 0) {
-        target = firstAliveExcept(state_, playerId_, Role::Civilian, false);
+    if (!knownMafia.empty()) {
+        const int target = state_->pickCandidate(knownMafia);
         logNight(state_, playerId_, "стреляет в", target);
         state_->submitShot(playerId_, target);
         return;
     }
-    logNight(state_, playerId_, "проверяет", target);
-    state_->submitCheck(playerId_, target);
+    if (!unchecked.empty()) {
+        const int target = state_->pickCandidate(unchecked);
+        logNight(state_, playerId_, "проверяет", target);
+        state_->submitCheck(playerId_, target);
+        return;
+    }
+
+    std::vector<int> others;
+    for (int id = 1; id <= state_->playerCount(); ++id) {
+        if (id != playerId_ && state_->alive(id)) {
+            others.push_back(id);
+        }
+    }
+    const int target = state_->pickCandidate(others);
+    logNight(state_, playerId_, "стреляет в", target);
+    state_->submitShot(playerId_, target);
 }
 
 void Maniac::actNight() {
@@ -136,7 +155,13 @@ void Maniac::actNight() {
         state_->markActed();
         return;
     }
-    const int target = firstAliveExcept(state_, playerId_, Role::Civilian, false);
+    std::vector<int> candidates;
+    for (int id = 1; id <= state_->playerCount(); ++id) {
+        if (id != playerId_ && state_->alive(id)) {
+            candidates.push_back(id);
+        }
+    }
+    const int target = state_->pickCandidate(candidates);
     logNight(state_, playerId_, "убивает", target);
     state_->submitManiacKill(playerId_, target);
 }
