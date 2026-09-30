@@ -77,6 +77,50 @@ void expectRoleCounts(const mafia::GameState& state, int mafiaCount, const char*
 
 }  // namespace
 
+void testWinner() {
+    mafia::GameState town(3);
+    town.assignRole(1, mafia::Role::Mafia);
+    town.assignRole(2, mafia::Role::Maniac);
+    town.assignRole(3, mafia::Role::Civilian);
+    town.submitMafiaKill(1, 2);
+    town.submitManiacKill(2, 1);
+    town.resolveNight();
+    expect(town.checkWinner() == mafia::Winner::Town, "мертвы мафия и маньяк — победа мирных");
+
+    mafia::GameState doctorCounts(3);
+    doctorCounts.assignRole(1, mafia::Role::Mafia);
+    doctorCounts.assignRole(2, mafia::Role::Doctor);
+    doctorCounts.assignRole(3, mafia::Role::Civilian);
+    expect(doctorCounts.checkWinner() == mafia::Winner::None, "доктор считается мирным");
+
+    mafia::GameState advantage(3);
+    advantage.assignRole(1, mafia::Role::Mafia);
+    advantage.assignRole(2, mafia::Role::Mafia);
+    advantage.assignRole(3, mafia::Role::Maniac);
+    expect(advantage.checkWinner() == mafia::Winner::Mafia, "мафии больше, чем мирных");
+
+    mafia::GameState equal(4);
+    equal.assignRole(1, mafia::Role::Mafia);
+    equal.assignRole(2, mafia::Role::Mafia);
+    equal.assignRole(3, mafia::Role::Civilian);
+    equal.assignRole(4, mafia::Role::Civilian);
+    expect(equal.checkWinner() == mafia::Winner::Mafia, "мафии столько же, сколько мирных");
+
+    mafia::GameState withManiac(3);
+    withManiac.assignRole(1, mafia::Role::Mafia);
+    withManiac.assignRole(2, mafia::Role::Civilian);
+    withManiac.assignRole(3, mafia::Role::Maniac);
+    expect(withManiac.checkWinner() == mafia::Winner::None, "при живом маньяке равенство не кончает партию");
+
+    mafia::GameState duel(3);
+    duel.assignRole(1, mafia::Role::Mafia);
+    duel.assignRole(2, mafia::Role::Maniac);
+    duel.assignRole(3, mafia::Role::Civilian);
+    duel.submitManiacKill(2, 1);
+    duel.resolveNight();
+    expect(duel.checkWinner() == mafia::Winner::Maniac, "маньяк один на один с мирным");
+}
+
 void testDayVote() {
     mafia::GameState majority(5);
     majority.submitVote(1, 2);
@@ -335,6 +379,7 @@ int main() {
     SetConsoleCP(CP_UTF8);
 #endif
 
+    testWinner();
     testDayVote();
     testMafiaDoesNotVoteForMafia();
     testMafiaNightSkipsMafia();
