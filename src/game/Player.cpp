@@ -1,5 +1,6 @@
 #include "game/Player.hpp"
 
+#include <cstdlib>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -14,12 +15,28 @@ const Phase kPhases[] = {Phase::DayTalk, Phase::DayVote, Phase::Night};
 Player::Player(SharedPtr<GameState> state, int playerId, bool interactive)
     : state_(std::move(state)), playerId_(playerId), interactive_(interactive) {}
 
+std::string Player::readLine() const {
+    std::string line;
+    if (!std::getline(std::cin, line)) {
+        return {};
+    }
+    return line;
+}
+
+int Player::readTargetId() const {
+    const std::string line = readLine();
+    if (line.empty()) {
+        return 0;
+    }
+    return std::atoi(line.c_str());
+}
+
 void Player::talk() {
     if (!state_->alive(playerId_)) {
         state_->submitTalk(playerId_, "");
         return;
     }
-    const std::string text = "я не мафия";
+    const std::string text = interactive_ ? readLine() : "я не мафия";
     if (state_->fullLog()) {
         std::cout << "игрок " << playerId_ << ": " << text << '\n';
     }

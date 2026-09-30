@@ -7,8 +7,7 @@
 
 namespace mafia {
 
-// Базовый игрок. Три хода пока только отмечают, что игрок сходил.
-// Человек в --interactive — тот же класс своей роли, флаг interactive_ без чтения stdin.
+// Базовый игрок. Бот говорит и выбирает цель сам. Человек читает ход из stdin.
 class Player {
 public:
     Player(SharedPtr<GameState> state, int playerId, bool interactive = false);
@@ -30,6 +29,8 @@ public:
 protected:
     // Случайный живой id, кроме себя. 0, если цели нет.
     virtual int chooseVoteTarget() const;
+    std::string readLine() const;
+    int readTargetId() const;
 
     SharedPtr<GameState> state_;
     int playerId_ = 0;
