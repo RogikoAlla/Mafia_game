@@ -38,7 +38,9 @@ void Host::run() {
                 if (eliminated == 0) {
                     std::cout << "ведущий: ничья, никто не выбыл\n";
                 } else {
-                    std::cout << "ведущий: исключён игрок " << eliminated << '\n';
+                    std::cout << eliminatedLine(eliminated, state_->role(eliminated),
+                                                state_->openAnnouncements())
+                              << '\n';
                 }
             }
             if (phase == Phase::Night) {
