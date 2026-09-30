@@ -4,8 +4,29 @@
 #include "game/GameState.hpp"
 
 #include <random>
+#include <string>
 
 namespace mafia {
+
+// Маньяк, доктор, комиссар и мирный — лагерь мирных. Мафия — свой лагерь.
+inline const char* campName(Role role) {
+    return role == Role::Mafia ? "мафия" : "мирные";
+}
+
+inline std::string eliminatedLine(int playerId, Role role, bool open) {
+    const std::string who = "ведущий: исключён игрок " + std::to_string(playerId) + ", ";
+    if (open) {
+        return who + roleName(role);
+    }
+    return who + "лагерь " + campName(role);
+}
+
+inline std::string nightVictimLine(int playerId, Role role, bool open) {
+    if (open) {
+        return "ведущий: ночью убит игрок " + std::to_string(playerId) + ", " + roleName(role);
+    }
+    return "ведущий: ночью выбыл игрок " + std::to_string(playerId) + ", лагерь " + campName(role);
+}
 
 // Ведущий не наследник игрока. Раздаёт роли и открывает фазы.
 // Запускать run через std::thread. Пока игроки не сходят, ведущий ждёт на каждой фазе.
