@@ -3,6 +3,7 @@
 
 #include "smart_ptr/SharedPtr.hpp"
 
+#include <cstring>
 #include <iostream>
 #include <memory>
 #include <random>
@@ -160,6 +161,19 @@ void testDayVote() {
     expect(deadVote.acted() == 3, "ход мёртвого отмечается");
     expect(deadVote.resolveDayVote() == 0, "голос мёртвого не учитывается");
     expect(deadVote.alive(2) && deadVote.alive(3), "живые при ничьей остаются");
+}
+
+void testAnnouncements() {
+    const std::string closedDoctor = mafia::eliminatedLine(2, mafia::Role::Doctor, false);
+    expect(std::strstr(closedDoctor.c_str(), "доктор") == nullptr, "закрытая казнь не называет доктора");
+    expect(std::strstr(closedDoctor.c_str(), "мирные") != nullptr, "доктор в лагере мирных");
+    const std::string openDoctor = mafia::eliminatedLine(2, mafia::Role::Doctor, true);
+    expect(std::strstr(openDoctor.c_str(), "доктор") != nullptr, "открытая казнь называет доктора");
+    const std::string closedManiac = mafia::eliminatedLine(3, mafia::Role::Maniac, false);
+    expect(std::strstr(closedManiac.c_str(), "мирные") != nullptr, "маньяк в лагере мирных");
+    const std::string closedMafia = mafia::nightVictimLine(1, mafia::Role::Mafia, false);
+    expect(std::strstr(closedMafia.c_str(), "мафия") != nullptr, "ночная жертва-мафия показывает лагерь");
+    expect(std::strstr(closedMafia.c_str(), "убит") == nullptr, "закрытая ночь не говорит убит");
 }
 
 void testNight() {
@@ -380,6 +394,7 @@ int main() {
 #endif
 
     testWinner();
+    testAnnouncements();
     testDayVote();
     testMafiaDoesNotVoteForMafia();
     testMafiaNightSkipsMafia();
