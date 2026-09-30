@@ -154,7 +154,13 @@ void Maniac::actNight() {
         state_->markActed();
         return;
     }
-    const int target = firstAliveExcept(state_, playerId_, Role::Civilian, false);
+    std::vector<int> candidates;
+    for (int id = 1; id <= state_->playerCount(); ++id) {
+        if (id != playerId_ && state_->alive(id)) {
+            candidates.push_back(id);
+        }
+    }
+    const int target = state_->pickCandidate(candidates);
     logNight(state_, playerId_, "убивает", target);
     state_->submitManiacKill(playerId_, target);
 }
