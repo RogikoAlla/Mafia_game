@@ -101,6 +101,53 @@ public:
 
     int playerCount() const { return playerCount_; }
 
+    Winner winner() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return winner_;
+    }
+
+    void setWinner(Winner winner) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        winner_ = winner;
+    }
+
+    // Доктор и комиссар считаются за мирных. Маньяк — отдельная сторона.
+    Winner checkWinner() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        int mafia = 0;
+        int town = 0;
+        int maniac = 0;
+        for (int id = 1; id <= playerCount_; ++id) {
+            if (alive_[id] == 0) {
+                continue;
+            }
+            switch (roles_[id]) {
+            case Role::Mafia:
+                ++mafia;
+                break;
+            case Role::Maniac:
+                ++maniac;
+                break;
+            default:
+                ++town;
+                break;
+            }
+        }
+        if (mafia == 0 && maniac == 0) {
+            return Winner::Town;
+        }
+        if (maniac > 0 && mafia == 0 && town <= 1) {
+            return Winner::Maniac;
+        }
+        if (mafia > town) {
+            return Winner::Mafia;
+        }
+        if (mafia == town && mafia > 0 && maniac == 0) {
+            return Winner::Mafia;
+        }
+        return Winner::None;
+    }
+
     // Ведущий раздаёт роли до старта потоков. После этого роль не меняется.
     void assignRole(int playerId, Role role) { roles_[playerId] = role; }
 
@@ -333,6 +380,7 @@ private:
     int acted_ = 0;
     int playerCount_ = 0;
     bool finished_ = false;
+    Winner winner_ = Winner::None;
     bool openAnnouncements_ = false;
     bool fullLog_ = false;
     std::vector<Role> roles_;

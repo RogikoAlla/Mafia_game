@@ -166,8 +166,9 @@ void Maniac::actNight() {
     state_->submitManiacKill(playerId_, target);
 }
 
-void Player::run(int rounds) {
-    for (int round = 1; round <= rounds; ++round) {
+void Player::run() {
+    int round = 1;
+    while (true) {
         for (Phase phase : kPhases) {
             state_->waitForPhase(phase, round);
             if (state_->phase() == Phase::Finished) {
@@ -189,6 +190,7 @@ void Player::run(int rounds) {
                 return;
             }
         }
+        ++round;
     }
 }
 

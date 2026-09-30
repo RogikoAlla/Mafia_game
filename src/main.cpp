@@ -46,8 +46,6 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    constexpr int kRounds = 2;
-
     mafia::SharedPtr<mafia::GameState> state(new mafia::GameState(playerCount));
     state->setOpenAnnouncements(openAnnouncements);
     state->setFullLog(fullLog);
@@ -78,10 +76,10 @@ int main(int argc, char* argv[]) {
     std::vector<std::thread> players;
     players.reserve(playerCount);
     for (const std::unique_ptr<mafia::Player>& player : roster) {
-        players.emplace_back(&mafia::Player::run, player.get(), kRounds);
+        players.emplace_back(&mafia::Player::run, player.get());
     }
 
-    std::thread hostThread(&mafia::Host::run, &host, kRounds);
+    std::thread hostThread(&mafia::Host::run, &host);
 
     hostThread.join();
     for (std::thread& player : players) {

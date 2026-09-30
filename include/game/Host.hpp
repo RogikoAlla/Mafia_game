@@ -17,7 +17,8 @@ public:
     // Id перемешиваются генератором, состав ролей от этого не меняется.
     void dealRoles(std::mt19937& generator);
 
-    void run(int rounds = 2);
+    // Крутит день и ночь, пока checkWinner не назовёт сторону.
+    void run();
 
 private:
     SharedPtr<GameState> state_;
