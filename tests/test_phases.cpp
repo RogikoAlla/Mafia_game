@@ -28,6 +28,47 @@ void expect(bool condition, const char* message) {
 
 }  // namespace
 
+void testDayVote() {
+    mafia::GameState majority(5);
+    majority.submitVote(1, 2);
+    majority.submitVote(2, 1);
+    majority.submitVote(3, 1);
+    majority.submitVote(4, 1);
+    majority.submitVote(5, 1);
+    expect(majority.resolveDayVote() == 1, "большинство исключает игрока 1");
+    expect(!majority.alive(1), "игрок 1 мёртв после голосования");
+    expect(majority.alive(2), "игрок 2 остаётся жив");
+
+    mafia::GameState tie(4);
+    tie.submitVote(1, 2);
+    tie.submitVote(2, 1);
+    tie.submitVote(3, 1);
+    tie.submitVote(4, 2);
+    expect(tie.resolveDayVote() == 0, "ничья, никто не выбывает");
+    expect(tie.alive(1) && tie.alive(2), "при ничьей оба кандидата живы");
+
+    mafia::GameState selfVote(3);
+    selfVote.submitVote(1, 1);
+    selfVote.submitVote(2, 1);
+    selfVote.submitVote(3, 2);
+    expect(selfVote.acted() == 3, "голос в себя отмечается");
+    expect(selfVote.resolveDayVote() == 0, "голос в себя не идёт в подсчёт");
+    expect(selfVote.alive(1), "игрок 1 жив, своего голоса нет в большинстве");
+
+    mafia::GameState deadVote(3);
+    deadVote.submitVote(2, 1);
+    deadVote.submitVote(3, 1);
+    deadVote.submitVote(1, 2);
+    expect(deadVote.resolveDayVote() == 1, "перед ходом мёртвого игрок 1 исключён");
+    deadVote.beginPhase(mafia::Phase::DayVote, 1);
+    deadVote.submitVote(1, 2);
+    deadVote.submitVote(2, 3);
+    deadVote.submitVote(3, 2);
+    expect(deadVote.acted() == 3, "ход мёртвого отмечается");
+    expect(deadVote.resolveDayVote() == 0, "голос мёртвого не учитывается");
+    expect(deadVote.alive(2) && deadVote.alive(3), "живые при ничьей остаются");
+}
+
 void testDealForTenPlayers() {
     mafia::SharedPtr<mafia::GameState> state(new mafia::GameState(10));
     mafia::Host host(state);
@@ -48,6 +89,7 @@ int main() {
     SetConsoleCP(CP_UTF8);
 #endif
 
+    testDayVote();
     testDealForTenPlayers();
 
     constexpr int kPlayers = 5;
