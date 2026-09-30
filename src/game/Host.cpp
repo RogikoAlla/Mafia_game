@@ -25,12 +25,28 @@ void Host::dealRoles(std::mt19937& generator) {
     state_->assignRole(ids[next++], Role::Maniac);
 }
 
+void Host::promptHuman(Phase phase) const {
+    const int human = state_->interactivePlayer();
+    if (human == 0 || !state_->alive(human)) {
+        return;
+    }
+    if (phase == Phase::DayTalk) {
+        std::cout << "ведущий: игрок " << human << ", введите реплику\n";
+        return;
+    }
+    if (phase == Phase::DayVote ||
+        (phase == Phase::Night && state_->nightChoiceRequired(human))) {
+        std::cout << "ведущий: игрок " << human << ", введите номер живого игрока\n";
+    }
+}
+
 void Host::run() {
     const Phase phases[] = {Phase::DayTalk, Phase::DayVote, Phase::Night};
     int round = 1;
     while (true) {
         for (Phase phase : phases) {
             std::cout << "ведущий: раунд " << round << ", фаза " << phaseName(phase) << '\n';
+            promptHuman(phase);
             state_->beginPhase(phase, round);
             state_->waitUntilAllActed();
             if (phase == Phase::DayVote) {

@@ -49,6 +49,9 @@ int main(int argc, char* argv[]) {
     mafia::SharedPtr<mafia::GameState> state(new mafia::GameState(playerCount));
     state->setOpenAnnouncements(openAnnouncements);
     state->setFullLog(fullLog);
+    if (interactive) {
+        state->setInteractivePlayer(1);
+    }
 
     std::random_device device;
     state->seedChoices(device());

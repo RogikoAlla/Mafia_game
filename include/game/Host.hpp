@@ -42,6 +42,8 @@ public:
     void run();
 
 private:
+    void promptHuman(Phase phase) const;
+
     SharedPtr<GameState> state_;
 };
 
