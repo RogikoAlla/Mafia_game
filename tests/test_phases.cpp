@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <memory>
+#include <random>
 #include <thread>
 #include <vector>
 
@@ -24,6 +25,54 @@ void expect(bool condition, const char* message) {
         std::cerr << "FAIL: " << message << '\n';
         ++failures;
     }
+}
+
+bool isRoleClass(mafia::Player* player, mafia::Role role) {
+    switch (role) {
+    case mafia::Role::Mafia:
+        return dynamic_cast<mafia::Mafia*>(player) != nullptr;
+    case mafia::Role::Doctor:
+        return dynamic_cast<mafia::Doctor*>(player) != nullptr;
+    case mafia::Role::Commissioner:
+        return dynamic_cast<mafia::Commissioner*>(player) != nullptr;
+    case mafia::Role::Maniac:
+        return dynamic_cast<mafia::Maniac*>(player) != nullptr;
+    case mafia::Role::Civilian:
+        return dynamic_cast<mafia::Civilian*>(player) != nullptr;
+    }
+    return false;
+}
+
+void expectRoleCounts(const mafia::GameState& state, int mafiaCount, const char* label) {
+    int mafia = 0;
+    int doctor = 0;
+    int commissioner = 0;
+    int maniac = 0;
+    int civilian = 0;
+    for (int id = 1; id <= state.playerCount(); ++id) {
+        switch (state.role(id)) {
+        case mafia::Role::Mafia:
+            ++mafia;
+            break;
+        case mafia::Role::Doctor:
+            ++doctor;
+            break;
+        case mafia::Role::Commissioner:
+            ++commissioner;
+            break;
+        case mafia::Role::Maniac:
+            ++maniac;
+            break;
+        case mafia::Role::Civilian:
+            ++civilian;
+            break;
+        }
+    }
+    expect(mafia == mafiaCount, label);
+    expect(doctor == 1, "в раздаче один доктор");
+    expect(commissioner == 1, "в раздаче один комиссар");
+    expect(maniac == 1, "в раздаче один маньяк");
+    expect(civilian == state.playerCount() - mafiaCount - 3, "остальные — мирные");
 }
 
 }  // namespace
@@ -146,18 +195,30 @@ void testNight() {
     expect(selfKill.acted() == 1, "неверный ночной ход отмечается");
 }
 
+std::vector<mafia::Role> dealWithSeed(unsigned seed) {
+    mafia::SharedPtr<mafia::GameState> state(new mafia::GameState(10));
+    mafia::Host host(state);
+    std::mt19937 generator(seed);
+    host.dealRoles(generator);
+    std::vector<mafia::Role> roles;
+    roles.reserve(10);
+    for (int id = 1; id <= 10; ++id) {
+        roles.push_back(state->role(id));
+    }
+    return roles;
+}
+
+void testSameSeedDealsTheSameRoles() {
+    expect(dealWithSeed(1) == dealWithSeed(1), "одно зерно даёт одну раздачу");
+    expect(dealWithSeed(1) != dealWithSeed(2), "разные зёрна перемешивают id по-разному");
+}
+
 void testDealForTenPlayers() {
     mafia::SharedPtr<mafia::GameState> state(new mafia::GameState(10));
     mafia::Host host(state);
-    host.dealRoles();
-    expect(state->role(1) == mafia::Role::Mafia, "при N=10 мафия — игроки 1–3");
-    expect(state->role(2) == mafia::Role::Mafia, "при N=10 игрок 2 — мафия");
-    expect(state->role(3) == mafia::Role::Mafia, "при N=10 игрок 3 — мафия");
-    expect(state->role(4) == mafia::Role::Doctor, "при N=10 игрок 4 — доктор");
-    expect(state->role(5) == mafia::Role::Commissioner, "при N=10 игрок 5 — комиссар");
-    expect(state->role(6) == mafia::Role::Maniac, "при N=10 игрок 6 — маньяк");
-    expect(state->role(7) == mafia::Role::Civilian, "при N=10 хвост — мирные");
-    expect(state->role(10) == mafia::Role::Civilian, "при N=10 игрок 10 — мирный");
+    std::mt19937 generator(1);
+    host.dealRoles(generator);
+    expectRoleCounts(*state, 3, "при N=10 мафий трое");
 }
 
 int main() {
@@ -168,6 +229,7 @@ int main() {
 
     testDayVote();
     testNight();
+    testSameSeedDealsTheSameRoles();
     testDealForTenPlayers();
 
     constexpr int kPlayers = 5;
@@ -175,22 +237,27 @@ int main() {
 
     mafia::SharedPtr<mafia::GameState> state(new mafia::GameState(kPlayers));
     mafia::Host host(state);
-    host.dealRoles();
+    std::mt19937 generator(1);
+    host.dealRoles(generator);
+    expectRoleCounts(*state, 1, "при N=5 мафия одна");
+
+    mafia::Role dealt[kPlayers + 1];
+    for (int playerId = 1; playerId <= kPlayers; ++playerId) {
+        dealt[playerId] = state->role(playerId);
+    }
 
     std::vector<std::unique_ptr<mafia::Player>> roster;
     roster.reserve(kPlayers);
     for (int playerId = 1; playerId <= kPlayers; ++playerId) {
         roster.push_back(mafia::makePlayer(state, playerId));
     }
-    expect(dynamic_cast<mafia::Mafia*>(roster[0].get()) != nullptr, "класс игрока 1 — Mafia");
-    expect(dynamic_cast<mafia::Doctor*>(roster[1].get()) != nullptr, "класс игрока 2 — Doctor");
-    expect(dynamic_cast<mafia::Commissioner*>(roster[2].get()) != nullptr,
-           "класс игрока 3 — Commissioner");
-    expect(dynamic_cast<mafia::Maniac*>(roster[3].get()) != nullptr, "класс игрока 4 — Maniac");
-    expect(dynamic_cast<mafia::Civilian*>(roster[4].get()) != nullptr, "класс игрока 5 — Civilian");
+    for (int playerId = 1; playerId <= kPlayers; ++playerId) {
+        expect(isRoleClass(roster[playerId - 1].get(), dealt[playerId]),
+               "класс игрока совпадает с разданной ролью");
+    }
 
     auto interactive = mafia::makePlayer(state, 1, true);
-    expect(dynamic_cast<mafia::Mafia*>(interactive.get()) != nullptr,
+    expect(isRoleClass(interactive.get(), dealt[1]),
            "интерактивный игрок остаётся классом своей роли");
     expect(interactive->interactive(), "флаг --interactive сохраняется на игроке");
 
@@ -210,11 +277,9 @@ int main() {
     expect(state->round() == kRounds, "ведущий дошёл до второго раунда");
     expect(state.get() != nullptr, "партия жива после join");
 
-    expect(state->role(1) == mafia::Role::Mafia, "на 5 игроках один мафия — игрок 1");
-    expect(state->role(2) == mafia::Role::Doctor, "игрок 2 — доктор");
-    expect(state->role(3) == mafia::Role::Commissioner, "игрок 3 — комиссар");
-    expect(state->role(4) == mafia::Role::Maniac, "игрок 4 — маньяк");
-    expect(state->role(5) == mafia::Role::Civilian, "игрок 5 — мирный");
+    for (int playerId = 1; playerId <= kPlayers; ++playerId) {
+        expect(state->role(playerId) == dealt[playerId], "роли не меняются за партию");
+    }
 
     if (failures != 0) {
         std::cerr << failures << " проверок не прошли\n";

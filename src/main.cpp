@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <memory>
+#include <random>
 #include <string>
 #include <thread>
 #include <vector>
@@ -52,7 +53,9 @@ int main(int argc, char* argv[]) {
     state->setFullLog(fullLog);
 
     mafia::Host host(state);
-    host.dealRoles();
+    std::random_device device;
+    std::mt19937 generator(device());
+    host.dealRoles(generator);
 
     std::cout << "игроков: " << playerCount;
     if (interactive) {

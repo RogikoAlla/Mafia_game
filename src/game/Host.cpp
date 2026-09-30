@@ -2,20 +2,27 @@
 
 #include <algorithm>
 #include <iostream>
+#include <numeric>
+#include <vector>
 
 namespace mafia {
 
-void Host::dealRoles() {
+void Host::dealRoles(std::mt19937& generator) {
     constexpr int kMafiaDivisor = 3;
     const int playerCount = state_->playerCount();
     const int mafiaCount = std::max(1, playerCount / kMafiaDivisor);
-    int nextId = 1;
-    for (int i = 0; i < mafiaCount; ++i, ++nextId) {
-        state_->assignRole(nextId, Role::Mafia);
+
+    std::vector<int> ids(playerCount);
+    std::iota(ids.begin(), ids.end(), 1);
+    std::shuffle(ids.begin(), ids.end(), generator);
+
+    int next = 0;
+    for (int i = 0; i < mafiaCount; ++i) {
+        state_->assignRole(ids[next++], Role::Mafia);
     }
-    state_->assignRole(nextId++, Role::Doctor);
-    state_->assignRole(nextId++, Role::Commissioner);
-    state_->assignRole(nextId++, Role::Maniac);
+    state_->assignRole(ids[next++], Role::Doctor);
+    state_->assignRole(ids[next++], Role::Commissioner);
+    state_->assignRole(ids[next++], Role::Maniac);
 }
 
 void Host::run(int rounds) {
