@@ -26,6 +26,14 @@ void Host::run(int rounds) {
             std::cout << "ведущий: раунд " << round << ", фаза " << phaseName(phase) << '\n';
             state_->beginPhase(phase, round);
             state_->waitUntilAllActed();
+            if (phase == Phase::DayVote) {
+                const int eliminated = state_->resolveDayVote();
+                if (eliminated == 0) {
+                    std::cout << "ведущий: ничья, никто не выбыл\n";
+                } else {
+                    std::cout << "ведущий: исключён игрок " << eliminated << '\n';
+                }
+            }
         }
     }
 
