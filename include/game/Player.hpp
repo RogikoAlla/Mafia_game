@@ -39,6 +39,7 @@ protected:
 class Mafia : public Player {
 public:
     using Player::Player;
+    void actNight() override;
 };
 
 class Civilian : public Player {
@@ -49,16 +50,19 @@ public:
 class Commissioner : public Player {
 public:
     using Player::Player;
+    void actNight() override;
 };
 
 class Doctor : public Player {
 public:
     using Player::Player;
+    void actNight() override;
 };
 
 class Maniac : public Player {
 public:
     using Player::Player;
+    void actNight() override;
 };
 
 // Роль уже должна быть раздана. interactive не меняет класс роли.
