@@ -167,6 +167,10 @@ void Maniac::actNight() {
 }
 
 void Player::run() {
+    if (state_->fullLog()) {
+        std::cout << "игрок " << playerId_ << ": роль — " << roleName(state_->role(playerId_))
+                  << '\n';
+    }
     int round = 1;
     while (true) {
         for (Phase phase : kPhases) {
