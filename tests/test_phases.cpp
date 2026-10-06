@@ -224,8 +224,8 @@ void testNight() {
     boss.assignRole(3, mafia::Role::Civilian);
     boss.assignRole(4, mafia::Role::Civilian);
     boss.submitMafiaKill(2, 3);
-    expect(boss.resolveNight().mafiaKilled == 0, "не босс не назначает убийство");
-    expect(boss.alive(3), "цель не босса жива");
+    expect(boss.resolveNight().mafiaKilled == 3, "голос рядовой мафии назначает цель");
+    expect(!boss.alive(3), "цель рядовой мафии мертва");
     boss.beginPhase(mafia::Phase::Night, 2);
     boss.submitMafiaKill(1, 2);
     expect(boss.resolveNight().mafiaKilled == 0, "мафия не убивает свою");
@@ -365,6 +365,31 @@ void testDoctorDoesNotRepeatHeal() {
     expect(second != 0 && second != first, "доктор не лечит ту же цель две ночи подряд");
 }
 
+void testMafiaNightVote() {
+    mafia::GameState majority(6);
+    majority.assignRole(1, mafia::Role::Mafia);
+    majority.assignRole(2, mafia::Role::Mafia);
+    majority.assignRole(3, mafia::Role::Mafia);
+    majority.assignRole(4, mafia::Role::Civilian);
+    majority.assignRole(5, mafia::Role::Civilian);
+    majority.assignRole(6, mafia::Role::Civilian);
+    majority.submitMafiaKill(1, 5);
+    majority.submitMafiaKill(2, 5);
+    majority.submitMafiaKill(3, 4);
+    expect(majority.resolveNight().mafiaTarget == 5, "два голоса важнее одного");
+
+    mafia::GameState tie(6);
+    tie.assignRole(1, mafia::Role::Mafia);
+    tie.assignRole(2, mafia::Role::Mafia);
+    tie.assignRole(3, mafia::Role::Civilian);
+    tie.assignRole(4, mafia::Role::Civilian);
+    tie.assignRole(5, mafia::Role::Civilian);
+    tie.assignRole(6, mafia::Role::Civilian);
+    tie.submitMafiaKill(1, 6);
+    tie.submitMafiaKill(2, 4);
+    expect(tie.resolveNight().mafiaTarget == 4, "при равенстве голосов берётся меньший номер");
+}
+
 void testMafiaNightSkipsMafia() {
     mafia::SharedPtr<mafia::GameState> state(new mafia::GameState(4));
     state->assignRole(1, mafia::Role::Mafia);
@@ -422,6 +447,7 @@ int main() {
     testHumanReadsStdin();
     testDayVote();
     testMafiaDoesNotVoteForMafia();
+    testMafiaNightVote();
     testMafiaNightSkipsMafia();
     testDoctorDoesNotRepeatHeal();
     testManiacPicksAnotherPlayer();

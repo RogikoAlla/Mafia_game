@@ -34,6 +34,7 @@ public:
           alive_(playerCount + 1, 1),
           talks_(playerCount + 1),
           votes_(playerCount + 1, 0),
+          mafiaVotes_(playerCount + 1, 0),
           inspected_(playerCount + 1, 0),
           inspectedAs_(playerCount + 1, Role::Civilian) {}
 
@@ -49,8 +50,8 @@ public:
         for (int id = 1; id <= playerCount_; ++id) {
             talks_[id].clear();
             votes_[id] = 0;
+            mafiaVotes_[id] = 0;
         }
-        mafiaTarget_ = 0;
         maniacTarget_ = 0;
         doctorTarget_ = 0;
         commissionerTarget_ = 0;
@@ -254,7 +255,7 @@ public:
         return bestId;
     }
 
-    // Младший живой мафиози. 0, если мафии не осталось.
+    // Младший живой мафиози. Пока ночной вопрос задают только ему.
     int mafiaBoss() const {
         std::lock_guard<std::mutex> lock(mutex_);
         for (int id = 1; id <= playerCount_; ++id) {
@@ -263,6 +264,30 @@ public:
             }
         }
         return 0;
+    }
+
+    // Другие живые мафии. Человеку этот список показывают перед ночным выстрелом.
+    std::vector<int> mafiaAllies(int playerId) const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        std::vector<int> allies;
+        for (int id = 1; id <= playerCount_; ++id) {
+            if (id != playerId && roles_[id] == Role::Mafia && alive_[id] != 0) {
+                allies.push_back(id);
+            }
+        }
+        return allies;
+    }
+
+    // Живая мафия может назвать только другого живого не из мафии.
+    bool canMafiaShoot(int actor, int target) const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (actor < 1 || actor > playerCount_ || alive_[actor] == 0 || roles_[actor] != Role::Mafia) {
+            return false;
+        }
+        if (target < 1 || target > playerCount_ || alive_[target] == 0 || target == actor) {
+            return false;
+        }
+        return roles_[target] != Role::Mafia;
     }
 
     int lastHeal() const {
@@ -281,11 +306,13 @@ public:
         return inspectedAs_[playerId];
     }
 
+    // Голос живой мафии. Выстрел в мафию не записывается, отметка хода остаётся.
     void submitMafiaKill(int playerId, int targetId) {
         std::lock_guard<std::mutex> lock(mutex_);
-        if (playerId == currentBoss() && livingTarget(playerId, targetId, false) &&
+        if (playerId >= 1 && playerId <= playerCount_ && alive_[playerId] != 0 &&
+            roles_[playerId] == Role::Mafia && livingTarget(playerId, targetId, false) &&
             roles_[targetId] != Role::Mafia) {
-            mafiaTarget_ = targetId;
+            mafiaVotes_[playerId] = targetId;
         }
         noteActed();
     }
@@ -330,14 +357,14 @@ public:
     NightResult resolveNight() {
         std::lock_guard<std::mutex> lock(mutex_);
         NightResult result;
-        result.mafiaTarget = mafiaTarget_;
+        result.mafiaTarget = chosenMafiaTarget();
         result.maniacTarget = maniacTarget_;
         result.doctorTarget = doctorTarget_;
         result.commissionerTarget = commissionerTarget_;
         result.commissionerShot = commissionerShoots_;
 
         const int heal = doctorTarget_;
-        result.mafiaKilled = killUnlessHealed(mafiaTarget_, heal);
+        result.mafiaKilled = killUnlessHealed(result.mafiaTarget, heal);
         result.maniacKilled = killUnlessHealed(maniacTarget_, heal);
         if (commissionerShoots_) {
             result.commissionerKilled = killUnlessHealed(commissionerTarget_, heal);
@@ -350,7 +377,9 @@ public:
             lastDoctorTarget_ = doctorTarget_;
         }
 
-        mafiaTarget_ = 0;
+        for (int id = 1; id <= playerCount_; ++id) {
+            mafiaVotes_[id] = 0;
+        }
         maniacTarget_ = 0;
         doctorTarget_ = 0;
         commissionerTarget_ = 0;
@@ -364,13 +393,24 @@ private:
         condition_.notify_all();
     }
 
-    int currentBoss() const {
-        for (int id = 1; id <= playerCount_; ++id) {
-            if (alive_[id] != 0 && roles_[id] == Role::Mafia) {
-                return id;
+    // Больше голосов побеждает. При равенстве остаётся меньший номер: обход идёт с 1.
+    int chosenMafiaTarget() const {
+        std::vector<int> tally(playerCount_ + 1, 0);
+        for (int voter = 1; voter <= playerCount_; ++voter) {
+            const int target = mafiaVotes_[voter];
+            if (target >= 1 && target <= playerCount_) {
+                ++tally[target];
             }
         }
-        return 0;
+        int bestId = 0;
+        int bestCount = 0;
+        for (int id = 1; id <= playerCount_; ++id) {
+            if (tally[id] > bestCount) {
+                bestCount = tally[id];
+                bestId = id;
+            }
+        }
+        return bestId;
     }
 
     bool livingTarget(int actor, int target, bool allowSelf) const {
@@ -404,7 +444,7 @@ private:
     std::vector<char> alive_;
     std::vector<std::string> talks_;
     std::vector<int> votes_;
-    int mafiaTarget_ = 0;
+    std::vector<int> mafiaVotes_;
     int maniacTarget_ = 0;
     int doctorTarget_ = 0;
     int lastDoctorTarget_ = 0;
