@@ -165,16 +165,14 @@ public:
     void setInteractivePlayer(int playerId) { interactivePlayer_ = playerId; }
     int interactivePlayer() const { return interactivePlayer_; }
 
-    // Ночью ввод нужен живому доктору, комиссару, маньяку и боссу мафии.
+    // Ночью ввод нужен живому доктору, комиссару, маньяку и каждой живой мафии.
     bool nightChoiceRequired(int playerId) const {
         if (playerId < 1 || playerId > playerCount_ || !alive(playerId)) {
             return false;
         }
         const Role dealt = roles_[playerId];
-        if (dealt == Role::Doctor || dealt == Role::Commissioner || dealt == Role::Maniac) {
-            return true;
-        }
-        return dealt == Role::Mafia && mafiaBoss() == playerId;
+        return dealt == Role::Doctor || dealt == Role::Commissioner || dealt == Role::Maniac ||
+               dealt == Role::Mafia;
     }
 
     // Зерно выбора целей. По умолчанию 1, игра в main задаёт своё.
@@ -253,17 +251,6 @@ public:
         }
         alive_[bestId] = 0;
         return bestId;
-    }
-
-    // Младший живой мафиози. Пока ночной вопрос задают только ему.
-    int mafiaBoss() const {
-        std::lock_guard<std::mutex> lock(mutex_);
-        for (int id = 1; id <= playerCount_; ++id) {
-            if (alive_[id] != 0 && roles_[id] == Role::Mafia) {
-                return id;
-            }
-        }
-        return 0;
     }
 
     // Другие живые мафии. Человеку этот список показывают перед ночным выстрелом.

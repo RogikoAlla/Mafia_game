@@ -93,7 +93,7 @@ int Mafia::chooseVoteTarget() const {
 }
 
 void Mafia::actNight() {
-    if (!state_->alive(playerId_) || state_->mafiaBoss() != playerId_) {
+    if (!state_->alive(playerId_)) {
         state_->markActed();
         return;
     }

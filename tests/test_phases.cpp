@@ -184,8 +184,8 @@ void testHumanReadsStdin() {
     state->assignRole(3, mafia::Role::Civilian);
     state->assignRole(4, mafia::Role::Civilian);
     state->setInteractivePlayer(1);
-    expect(state->nightChoiceRequired(1), "босс мафии ночью выбирает цель");
-    expect(!state->nightChoiceRequired(2), "рядовая мафия ночью молчит");
+    expect(state->nightChoiceRequired(1), "мафия ночью выбирает цель");
+    expect(state->nightChoiceRequired(2), "вторая мафия тоже выбирает цель");
     expect(!state->nightChoiceRequired(3), "мирный ночью молчит");
 
     auto human = mafia::makePlayer(state, 1, true);
@@ -397,11 +397,13 @@ void testMafiaNightSkipsMafia() {
     state->assignRole(3, mafia::Role::Civilian);
     state->assignRole(4, mafia::Role::Civilian);
     state->seedChoices(3);
-    mafia::Mafia boss(state, 1);
+    mafia::Mafia first(state, 1);
+    mafia::Mafia second(state, 2);
     int shots = 0;
     for (int round = 1; round <= 4; ++round) {
         state->beginPhase(mafia::Phase::Night, round);
-        boss.actNight();
+        first.actNight();
+        second.actNight();
         const mafia::NightResult night = state->resolveNight();
         if (night.mafiaTarget == 0) {
             continue;
@@ -409,7 +411,7 @@ void testMafiaNightSkipsMafia() {
         ++shots;
         expect(state->role(night.mafiaTarget) != mafia::Role::Mafia, "мафия не стреляет в мафию");
     }
-    expect(shots > 0, "босс мафии сделал выстрел");
+    expect(shots > 0, "мафия сделала выстрел");
 }
 
 void testMafiaDoesNotVoteForMafia() {
