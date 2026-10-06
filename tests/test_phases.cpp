@@ -177,6 +177,23 @@ void testAnnouncements() {
     expect(std::strstr(closedMafia.c_str(), "убит") == nullptr, "закрытая ночь не говорит убит");
 }
 
+void testMafiaAlliesLine() {
+    mafia::SharedPtr<mafia::GameState> state(new mafia::GameState(4));
+    state->assignRole(1, mafia::Role::Mafia);
+    state->assignRole(2, mafia::Role::Mafia);
+    state->assignRole(3, mafia::Role::Civilian);
+    state->assignRole(4, mafia::Role::Mafia);
+    const std::string line = mafia::alliesLine(state->mafiaAllies(1));
+    expect(std::strstr(line.c_str(), "2") != nullptr, "человек видит соратника 2");
+    expect(std::strstr(line.c_str(), "4") != nullptr, "человек видит соратника 4");
+    expect(std::strstr(line.c_str(), " 1") == nullptr, "в списке соратников нет его самого");
+    state->submitVote(3, 4);
+    expect(state->resolveDayVote() == 4, "соратника можно вывести дневным голосом");
+    const std::string left = mafia::alliesLine(state->mafiaAllies(1));
+    expect(std::strstr(left.c_str(), "2") != nullptr, "живой соратник остаётся в списке");
+    expect(std::strstr(left.c_str(), "4") == nullptr, "мертвый соратник из списка уходит");
+}
+
 void testHumanReadsStdin() {
     mafia::SharedPtr<mafia::GameState> state(new mafia::GameState(4));
     state->assignRole(1, mafia::Role::Mafia);
@@ -446,6 +463,7 @@ int main() {
 
     testWinner();
     testAnnouncements();
+    testMafiaAlliesLine();
     testHumanReadsStdin();
     testDayVote();
     testMafiaDoesNotVoteForMafia();

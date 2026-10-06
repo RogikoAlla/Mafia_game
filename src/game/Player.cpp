@@ -1,3 +1,4 @@
+#include "game/Host.hpp"
 #include "game/Player.hpp"
 
 #include <cstdlib>
@@ -201,6 +202,10 @@ void Maniac::actNight() {
 }
 
 void Player::run() {
+    if (interactive_ && state_->role(playerId_) == Role::Mafia) {
+        std::cout << "игрок " << playerId_ << ": " << alliesLine(state_->mafiaAllies(playerId_))
+                  << '\n';
+    }
     if (state_->fullLog()) {
         std::cout << "игрок " << playerId_ << ": роль — " << roleName(state_->role(playerId_))
                   << '\n';
