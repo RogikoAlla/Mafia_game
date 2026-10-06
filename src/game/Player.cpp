@@ -1,8 +1,8 @@
 #include "game/Host.hpp"
+#include "game/Log.hpp"
 #include "game/Player.hpp"
 
 #include <cstdlib>
-#include <iostream>
 #include <string>
 #include <vector>
 
@@ -39,7 +39,7 @@ void Player::talk() {
     }
     const std::string text = interactive_ ? readLine() : "я не мафия";
     if (state_->fullLog()) {
-        std::cout << "игрок " << playerId_ << ": " << text << '\n';
+        logLine("игрок " + std::to_string(playerId_) + ": " + text);
     }
     state_->submitTalk(playerId_, text);
 }
@@ -62,9 +62,9 @@ void Player::vote() {
     const int target = interactive_ ? readTargetId() : chooseVoteTarget();
     if (state_->fullLog()) {
         if (target == 0) {
-            std::cout << "игрок " << playerId_ << ": голос не засчитан\n";
+            logLine("игрок " + std::to_string(playerId_) + ": голос не засчитан");
         } else {
-            std::cout << "игрок " << playerId_ << " голосует за " << target << '\n';
+            logLine("игрок " + std::to_string(playerId_) + " голосует за " + std::to_string(target));
         }
     }
     state_->submitVote(playerId_, target);
@@ -78,7 +78,7 @@ void logNight(const SharedPtr<GameState>& state, int playerId, const char* actio
     if (!state->fullLog()) {
         return;
     }
-    std::cout << "игрок " << playerId << " " << action << " " << target << '\n';
+    logLine("игрок " + std::to_string(playerId) + " " + action + " " + std::to_string(target));
 }
 
 }  // namespace
@@ -105,9 +105,9 @@ int Mafia::readKillTarget() const {
         const bool ownSide = target >= 1 && target <= state_->playerCount() &&
                              state_->alive(target) && state_->role(target) == Role::Mafia;
         if (ownSide) {
-            std::cout << "ведущий: в мафию стрелять нельзя, введите другой номер\n";
+            logLine("ведущий: в мафию стрелять нельзя, введите другой номер");
         } else {
-            std::cout << "ведущий: введите номер другого живого игрока\n";
+            logLine("ведущий: введите номер другого живого игрока");
         }
     }
 }
@@ -222,12 +222,12 @@ void Maniac::actNight() {
 
 void Player::run() {
     if (interactive_ && state_->role(playerId_) == Role::Mafia) {
-        std::cout << "игрок " << playerId_ << ": " << alliesLine(state_->mafiaAllies(playerId_))
-                  << '\n';
+        logLine("игрок " + std::to_string(playerId_) + ": " +
+                alliesLine(state_->mafiaAllies(playerId_)));
     }
     if (state_->fullLog()) {
-        std::cout << "игрок " << playerId_ << ": роль — " << roleName(state_->role(playerId_))
-                  << '\n';
+        logLine("игрок " + std::to_string(playerId_) + ": роль — " +
+                roleName(state_->role(playerId_)));
     }
     int round = 1;
     while (true) {
@@ -237,8 +237,8 @@ void Player::run() {
                 return;
             }
             if (state_->fullLog()) {
-                std::cout << "игрок " << playerId_ << ": раунд " << round << ", " << phaseName(phase)
-                          << '\n';
+                logLine("игрок " + std::to_string(playerId_) + ": раунд " + std::to_string(round) +
+                        ", " + phaseName(phase));
             }
             switch (phase) {
             case Phase::DayTalk:

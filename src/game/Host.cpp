@@ -1,8 +1,9 @@
 #include "game/Host.hpp"
+#include "game/Log.hpp"
 
 #include <algorithm>
-#include <iostream>
 #include <numeric>
+#include <string>
 #include <vector>
 
 namespace mafia {
@@ -31,15 +32,15 @@ void Host::promptHuman(Phase phase) const {
         return;
     }
     if (phase == Phase::DayTalk) {
-        std::cout << "ведущий: игрок " << human << ", введите реплику\n";
+        logLine("ведущий: игрок " + std::to_string(human) + ", введите реплику");
         return;
     }
     if (phase == Phase::Night && state_->role(human) == Role::Mafia) {
-        std::cout << "ведущий: " << alliesLine(state_->mafiaAllies(human)) << '\n';
+        logLine("ведущий: " + alliesLine(state_->mafiaAllies(human)));
     }
     if (phase == Phase::DayVote ||
         (phase == Phase::Night && state_->nightChoiceRequired(human))) {
-        std::cout << "ведущий: игрок " << human << ", введите номер живого игрока\n";
+        logLine("ведущий: игрок " + std::to_string(human) + ", введите номер живого игрока");
     }
 }
 
@@ -48,18 +49,17 @@ void Host::run() {
     int round = 1;
     while (true) {
         for (Phase phase : phases) {
-            std::cout << "ведущий: раунд " << round << ", фаза " << phaseName(phase) << '\n';
+            logLine("ведущий: раунд " + std::to_string(round) + ", фаза " + phaseName(phase));
             promptHuman(phase);
             state_->beginPhase(phase, round);
             state_->waitUntilAllActed();
             if (phase == Phase::DayVote) {
                 const int eliminated = state_->resolveDayVote();
                 if (eliminated == 0) {
-                    std::cout << "ведущий: ничья, никто не выбыл\n";
+                    logLine("ведущий: ничья, никто не выбыл");
                 } else {
-                    std::cout << eliminatedLine(eliminated, state_->role(eliminated),
-                                                state_->openAnnouncements())
-                              << '\n';
+                    logLine(eliminatedLine(eliminated, state_->role(eliminated),
+                                           state_->openAnnouncements()));
                 }
             }
             if (phase == Phase::Night) {
@@ -67,19 +67,18 @@ void Host::run() {
                 const bool tellNight = state_->openAnnouncements() || state_->fullLog();
                 if (tellNight) {
                     if (night.mafiaTarget != 0) {
-                        std::cout << "ведущий: мафия выбирает игрока " << night.mafiaTarget << '\n';
+                        logLine("ведущий: мафия выбирает игрока " + std::to_string(night.mafiaTarget));
                     }
                     if (night.maniacTarget != 0) {
-                        std::cout << "ведущий: маньяк выбирает игрока " << night.maniacTarget << '\n';
+                        logLine("ведущий: маньяк выбирает игрока " + std::to_string(night.maniacTarget));
                     }
                     if (night.doctorTarget != 0) {
-                        std::cout << "ведущий: доктор лечит игрока " << night.doctorTarget << '\n';
+                        logLine("ведущий: доктор лечит игрока " + std::to_string(night.doctorTarget));
                     }
                     if (night.commissionerTarget != 0) {
-                        std::cout << "ведущий: комиссар "
-                                  << (night.commissionerShot ? "стреляет в игрока "
-                                                             : "проверяет игрока ")
-                                  << night.commissionerTarget << '\n';
+                        logLine(std::string("ведущий: комиссар ") +
+                                (night.commissionerShot ? "стреляет в игрока " : "проверяет игрока ") +
+                                std::to_string(night.commissionerTarget));
                     }
                 }
                 const int killed[] = {night.mafiaKilled, night.maniacKilled, night.commissionerKilled};
@@ -97,18 +96,18 @@ void Host::run() {
                         }
                     }
                     if (!already) {
-                        std::cout << nightVictimLine(id, state_->role(id), open) << '\n';
+                        logLine(nightVictimLine(id, state_->role(id), open));
                         any = true;
                     }
                 }
                 if (!any) {
-                    std::cout << "ведущий: ночь без убийств\n";
+                    logLine("ведущий: ночь без убийств");
                 }
             }
             const Winner winner = state_->checkWinner();
             if (winner != Winner::None) {
                 state_->setWinner(winner);
-                std::cout << "ведущий: победа — " << winnerName(winner) << '\n';
+                logLine(std::string("ведущий: победа — ") + winnerName(winner));
                 state_->beginPhase(Phase::Finished, round);
                 return;
             }

@@ -1,4 +1,5 @@
 #include "game/Host.hpp"
+#include "game/Log.hpp"
 #include "game/Player.hpp"
 
 #include "smart_ptr/SharedPtr.hpp"
@@ -60,14 +61,10 @@ int main(int argc, char* argv[]) {
     std::mt19937 generator(device());
     host.dealRoles(generator);
 
-    std::cout << "игроков: " << playerCount;
-    if (interactive) {
-        std::cout << ", человек за игроком 1";
-    } else {
-        std::cout << ", все игроки программные";
-    }
-    std::cout << ", объявления " << (openAnnouncements ? "открытые" : "закрытые");
-    std::cout << ", лог " << (fullLog ? "полный" : "краткий") << '\n';
+    mafia::logLine(std::string("игроков: ") + std::to_string(playerCount) +
+                   (interactive ? ", человек за игроком 1" : ", все игроки программные") +
+                   ", объявления " + (openAnnouncements ? "открытые" : "закрытые") + ", лог " +
+                   (fullLog ? "полный" : "краткий"));
 
     std::vector<std::unique_ptr<mafia::Player>> roster;
     roster.reserve(playerCount);
