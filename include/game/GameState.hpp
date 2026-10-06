@@ -160,6 +160,22 @@ public:
     bool openAnnouncements() const { return openAnnouncements_; }
     bool fullLog() const { return fullLog_; }
 
+    // Номер человека задаётся до потоков. 0 — все ходы программные.
+    void setInteractivePlayer(int playerId) { interactivePlayer_ = playerId; }
+    int interactivePlayer() const { return interactivePlayer_; }
+
+    // Ночью ввод нужен живому доктору, комиссару, маньяку и боссу мафии.
+    bool nightChoiceRequired(int playerId) const {
+        if (playerId < 1 || playerId > playerCount_ || !alive(playerId)) {
+            return false;
+        }
+        const Role dealt = roles_[playerId];
+        if (dealt == Role::Doctor || dealt == Role::Commissioner || dealt == Role::Maniac) {
+            return true;
+        }
+        return dealt == Role::Mafia && mafiaBoss() == playerId;
+    }
+
     // Зерно выбора целей. По умолчанию 1, игра в main задаёт своё.
     void seedChoices(unsigned seed) {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -383,6 +399,7 @@ private:
     Winner winner_ = Winner::None;
     bool openAnnouncements_ = false;
     bool fullLog_ = false;
+    int interactivePlayer_ = 0;
     std::vector<Role> roles_;
     std::vector<char> alive_;
     std::vector<std::string> talks_;

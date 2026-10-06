@@ -25,12 +25,28 @@ void Host::dealRoles(std::mt19937& generator) {
     state_->assignRole(ids[next++], Role::Maniac);
 }
 
+void Host::promptHuman(Phase phase) const {
+    const int human = state_->interactivePlayer();
+    if (human == 0 || !state_->alive(human)) {
+        return;
+    }
+    if (phase == Phase::DayTalk) {
+        std::cout << "ведущий: игрок " << human << ", введите реплику\n";
+        return;
+    }
+    if (phase == Phase::DayVote ||
+        (phase == Phase::Night && state_->nightChoiceRequired(human))) {
+        std::cout << "ведущий: игрок " << human << ", введите номер живого игрока\n";
+    }
+}
+
 void Host::run() {
     const Phase phases[] = {Phase::DayTalk, Phase::DayVote, Phase::Night};
     int round = 1;
     while (true) {
         for (Phase phase : phases) {
             std::cout << "ведущий: раунд " << round << ", фаза " << phaseName(phase) << '\n';
+            promptHuman(phase);
             state_->beginPhase(phase, round);
             state_->waitUntilAllActed();
             if (phase == Phase::DayVote) {
@@ -38,12 +54,15 @@ void Host::run() {
                 if (eliminated == 0) {
                     std::cout << "ведущий: ничья, никто не выбыл\n";
                 } else {
-                    std::cout << "ведущий: исключён игрок " << eliminated << '\n';
+                    std::cout << eliminatedLine(eliminated, state_->role(eliminated),
+                                                state_->openAnnouncements())
+                              << '\n';
                 }
             }
             if (phase == Phase::Night) {
                 const NightResult night = state_->resolveNight();
-                if (state_->fullLog()) {
+                const bool tellNight = state_->openAnnouncements() || state_->fullLog();
+                if (tellNight) {
                     if (night.mafiaTarget != 0) {
                         std::cout << "ведущий: мафия выбирает игрока " << night.mafiaTarget << '\n';
                     }
@@ -61,6 +80,7 @@ void Host::run() {
                     }
                 }
                 const int killed[] = {night.mafiaKilled, night.maniacKilled, night.commissionerKilled};
+                const bool open = state_->openAnnouncements();
                 bool any = false;
                 for (int index = 0; index < 3; ++index) {
                     const int id = killed[index];
@@ -74,7 +94,7 @@ void Host::run() {
                         }
                     }
                     if (!already) {
-                        std::cout << "ведущий: ночью убит игрок " << id << '\n';
+                        std::cout << nightVictimLine(id, state_->role(id), open) << '\n';
                         any = true;
                     }
                 }
