@@ -5,6 +5,7 @@
 
 #include <random>
 #include <string>
+#include <vector>
 
 namespace mafia {
 
@@ -19,6 +20,18 @@ inline std::string eliminatedLine(int playerId, Role role, bool open) {
         return who + roleName(role);
     }
     return who + "лагерь " + campName(role);
+}
+
+inline std::string alliesLine(const std::vector<int>& allies) {
+    if (allies.empty()) {
+        return "соратников нет";
+    }
+    std::string line = "соратники";
+    for (int id : allies) {
+        line += ' ';
+        line += std::to_string(id);
+    }
+    return line;
 }
 
 inline std::string nightVictimLine(int playerId, Role role, bool open) {

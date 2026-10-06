@@ -34,6 +34,9 @@ void Host::promptHuman(Phase phase) const {
         std::cout << "ведущий: игрок " << human << ", введите реплику\n";
         return;
     }
+    if (phase == Phase::Night && state_->role(human) == Role::Mafia) {
+        std::cout << "ведущий: " << alliesLine(state_->mafiaAllies(human)) << '\n';
+    }
     if (phase == Phase::DayVote ||
         (phase == Phase::Night && state_->nightChoiceRequired(human))) {
         std::cout << "ведущий: игрок " << human << ", введите номер живого игрока\n";

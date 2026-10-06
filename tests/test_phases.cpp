@@ -177,6 +177,23 @@ void testAnnouncements() {
     expect(std::strstr(closedMafia.c_str(), "убит") == nullptr, "закрытая ночь не говорит убит");
 }
 
+void testMafiaAlliesLine() {
+    mafia::SharedPtr<mafia::GameState> state(new mafia::GameState(4));
+    state->assignRole(1, mafia::Role::Mafia);
+    state->assignRole(2, mafia::Role::Mafia);
+    state->assignRole(3, mafia::Role::Civilian);
+    state->assignRole(4, mafia::Role::Mafia);
+    const std::string line = mafia::alliesLine(state->mafiaAllies(1));
+    expect(std::strstr(line.c_str(), "2") != nullptr, "человек видит соратника 2");
+    expect(std::strstr(line.c_str(), "4") != nullptr, "человек видит соратника 4");
+    expect(std::strstr(line.c_str(), " 1") == nullptr, "в списке соратников нет его самого");
+    state->submitVote(3, 4);
+    expect(state->resolveDayVote() == 4, "соратника можно вывести дневным голосом");
+    const std::string left = mafia::alliesLine(state->mafiaAllies(1));
+    expect(std::strstr(left.c_str(), "2") != nullptr, "живой соратник остаётся в списке");
+    expect(std::strstr(left.c_str(), "4") == nullptr, "мертвый соратник из списка уходит");
+}
+
 void testHumanReadsStdin() {
     mafia::SharedPtr<mafia::GameState> state(new mafia::GameState(4));
     state->assignRole(1, mafia::Role::Mafia);
@@ -184,8 +201,8 @@ void testHumanReadsStdin() {
     state->assignRole(3, mafia::Role::Civilian);
     state->assignRole(4, mafia::Role::Civilian);
     state->setInteractivePlayer(1);
-    expect(state->nightChoiceRequired(1), "босс мафии ночью выбирает цель");
-    expect(!state->nightChoiceRequired(2), "рядовая мафия ночью молчит");
+    expect(state->nightChoiceRequired(1), "мафия ночью выбирает цель");
+    expect(state->nightChoiceRequired(2), "вторая мафия тоже выбирает цель");
     expect(!state->nightChoiceRequired(3), "мирный ночью молчит");
 
     auto human = mafia::makePlayer(state, 1, true);
@@ -196,7 +213,21 @@ void testHumanReadsStdin() {
     expect(state->voteOf(1) == 3, "человек голосует за введённый номер");
     human->actNight();
     const mafia::NightResult night = state->resolveNight();
-    expect(night.mafiaTarget == 4, "босс стреляет во введённый номер");
+    expect(night.mafiaTarget == 4, "мафия стреляет во введённый номер");
+    std::cin.rdbuf(previous);
+}
+
+void testHumanMafiaRetriesAlly() {
+    mafia::SharedPtr<mafia::GameState> state(new mafia::GameState(4));
+    state->assignRole(1, mafia::Role::Mafia);
+    state->assignRole(2, mafia::Role::Mafia);
+    state->assignRole(3, mafia::Role::Civilian);
+    state->assignRole(4, mafia::Role::Civilian);
+    auto human = mafia::makePlayer(state, 1, true);
+    std::istringstream input("2\n4\n");
+    std::streambuf* previous = std::cin.rdbuf(input.rdbuf());
+    human->actNight();
+    expect(state->resolveNight().mafiaTarget == 4, "после соратника принимается другая цель");
     std::cin.rdbuf(previous);
 }
 
@@ -224,8 +255,8 @@ void testNight() {
     boss.assignRole(3, mafia::Role::Civilian);
     boss.assignRole(4, mafia::Role::Civilian);
     boss.submitMafiaKill(2, 3);
-    expect(boss.resolveNight().mafiaKilled == 0, "не босс не назначает убийство");
-    expect(boss.alive(3), "цель не босса жива");
+    expect(boss.resolveNight().mafiaKilled == 3, "голос рядовой мафии назначает цель");
+    expect(!boss.alive(3), "цель рядовой мафии мертва");
     boss.beginPhase(mafia::Phase::Night, 2);
     boss.submitMafiaKill(1, 2);
     expect(boss.resolveNight().mafiaKilled == 0, "мафия не убивает свою");
@@ -365,6 +396,31 @@ void testDoctorDoesNotRepeatHeal() {
     expect(second != 0 && second != first, "доктор не лечит ту же цель две ночи подряд");
 }
 
+void testMafiaNightVote() {
+    mafia::GameState majority(6);
+    majority.assignRole(1, mafia::Role::Mafia);
+    majority.assignRole(2, mafia::Role::Mafia);
+    majority.assignRole(3, mafia::Role::Mafia);
+    majority.assignRole(4, mafia::Role::Civilian);
+    majority.assignRole(5, mafia::Role::Civilian);
+    majority.assignRole(6, mafia::Role::Civilian);
+    majority.submitMafiaKill(1, 5);
+    majority.submitMafiaKill(2, 5);
+    majority.submitMafiaKill(3, 4);
+    expect(majority.resolveNight().mafiaTarget == 5, "два голоса важнее одного");
+
+    mafia::GameState tie(6);
+    tie.assignRole(1, mafia::Role::Mafia);
+    tie.assignRole(2, mafia::Role::Mafia);
+    tie.assignRole(3, mafia::Role::Civilian);
+    tie.assignRole(4, mafia::Role::Civilian);
+    tie.assignRole(5, mafia::Role::Civilian);
+    tie.assignRole(6, mafia::Role::Civilian);
+    tie.submitMafiaKill(1, 6);
+    tie.submitMafiaKill(2, 4);
+    expect(tie.resolveNight().mafiaTarget == 4, "при равенстве голосов берётся меньший номер");
+}
+
 void testMafiaNightSkipsMafia() {
     mafia::SharedPtr<mafia::GameState> state(new mafia::GameState(4));
     state->assignRole(1, mafia::Role::Mafia);
@@ -372,11 +428,13 @@ void testMafiaNightSkipsMafia() {
     state->assignRole(3, mafia::Role::Civilian);
     state->assignRole(4, mafia::Role::Civilian);
     state->seedChoices(3);
-    mafia::Mafia boss(state, 1);
+    mafia::Mafia first(state, 1);
+    mafia::Mafia second(state, 2);
     int shots = 0;
     for (int round = 1; round <= 4; ++round) {
         state->beginPhase(mafia::Phase::Night, round);
-        boss.actNight();
+        first.actNight();
+        second.actNight();
         const mafia::NightResult night = state->resolveNight();
         if (night.mafiaTarget == 0) {
             continue;
@@ -384,7 +442,7 @@ void testMafiaNightSkipsMafia() {
         ++shots;
         expect(state->role(night.mafiaTarget) != mafia::Role::Mafia, "мафия не стреляет в мафию");
     }
-    expect(shots > 0, "босс мафии сделал выстрел");
+    expect(shots > 0, "мафия сделала выстрел");
 }
 
 void testMafiaDoesNotVoteForMafia() {
@@ -419,9 +477,12 @@ int main() {
 
     testWinner();
     testAnnouncements();
+    testMafiaAlliesLine();
     testHumanReadsStdin();
+    testHumanMafiaRetriesAlly();
     testDayVote();
     testMafiaDoesNotVoteForMafia();
+    testMafiaNightVote();
     testMafiaNightSkipsMafia();
     testDoctorDoesNotRepeatHeal();
     testManiacPicksAnotherPlayer();
