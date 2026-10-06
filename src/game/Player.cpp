@@ -93,6 +93,25 @@ int Mafia::chooseVoteTarget() const {
     return state_->pickCandidate(candidates);
 }
 
+int Mafia::readKillTarget() const {
+    while (true) {
+        const int target = readTargetId();
+        if (std::cin.fail()) {
+            return 0;
+        }
+        if (state_->canMafiaShoot(playerId_, target)) {
+            return target;
+        }
+        const bool ownSide = target >= 1 && target <= state_->playerCount() &&
+                             state_->alive(target) && state_->role(target) == Role::Mafia;
+        if (ownSide) {
+            std::cout << "ведущий: в мафию стрелять нельзя, введите другой номер\n";
+        } else {
+            std::cout << "ведущий: введите номер другого живого игрока\n";
+        }
+    }
+}
+
 void Mafia::actNight() {
     if (!state_->alive(playerId_)) {
         state_->markActed();
@@ -100,7 +119,7 @@ void Mafia::actNight() {
     }
     int target = 0;
     if (interactive_) {
-        target = readTargetId();
+        target = readKillTarget();
     } else {
         std::vector<int> candidates;
         for (int id = 1; id <= state_->playerCount(); ++id) {

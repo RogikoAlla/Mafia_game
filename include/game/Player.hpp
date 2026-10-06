@@ -45,6 +45,10 @@ public:
 protected:
     // Случайный живой не из мафии.
     int chooseVoteTarget() const override;
+
+private:
+    // Повторяет вопрос, пока цель не станет живым не из мафии. Конец ввода — 0.
+    int readKillTarget() const;
 };
 
 class Civilian : public Player {

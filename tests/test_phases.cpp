@@ -213,7 +213,21 @@ void testHumanReadsStdin() {
     expect(state->voteOf(1) == 3, "человек голосует за введённый номер");
     human->actNight();
     const mafia::NightResult night = state->resolveNight();
-    expect(night.mafiaTarget == 4, "босс стреляет во введённый номер");
+    expect(night.mafiaTarget == 4, "мафия стреляет во введённый номер");
+    std::cin.rdbuf(previous);
+}
+
+void testHumanMafiaRetriesAlly() {
+    mafia::SharedPtr<mafia::GameState> state(new mafia::GameState(4));
+    state->assignRole(1, mafia::Role::Mafia);
+    state->assignRole(2, mafia::Role::Mafia);
+    state->assignRole(3, mafia::Role::Civilian);
+    state->assignRole(4, mafia::Role::Civilian);
+    auto human = mafia::makePlayer(state, 1, true);
+    std::istringstream input("2\n4\n");
+    std::streambuf* previous = std::cin.rdbuf(input.rdbuf());
+    human->actNight();
+    expect(state->resolveNight().mafiaTarget == 4, "после соратника принимается другая цель");
     std::cin.rdbuf(previous);
 }
 
@@ -465,6 +479,7 @@ int main() {
     testAnnouncements();
     testMafiaAlliesLine();
     testHumanReadsStdin();
+    testHumanMafiaRetriesAlly();
     testDayVote();
     testMafiaDoesNotVoteForMafia();
     testMafiaNightVote();
