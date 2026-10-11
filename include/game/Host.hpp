@@ -11,7 +11,7 @@ namespace mafia {
 
 // Маньяк, доктор, комиссар и мирный — лагерь мирных. Мафия — свой лагерь.
 inline const char* campName(Role role) {
-    return role == Role::Mafia ? "мафия" : "мирные";
+    return mafiaCamp(role) ? "мафия" : "мирные";
 }
 
 inline std::string eliminatedLine(int playerId, Role role, bool open) {
