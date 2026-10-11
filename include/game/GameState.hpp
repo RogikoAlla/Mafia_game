@@ -126,6 +126,7 @@ public:
             }
             switch (roles_[id]) {
             case Role::Mafia:
+            case Role::Ninja:
                 ++mafia;
                 break;
             case Role::Maniac:
