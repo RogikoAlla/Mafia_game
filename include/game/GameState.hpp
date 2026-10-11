@@ -34,6 +34,8 @@ public:
           alive_(playerCount + 1, 1),
           talks_(playerCount + 1),
           votes_(playerCount + 1, 0),
+          votesCast_(playerCount + 1, 0),
+          nightTargets_(playerCount + 1, 0),
           mafiaVotes_(playerCount + 1, 0),
           inspected_(playerCount + 1, 0),
           inspectedAs_(playerCount + 1, Role::Civilian) {}
@@ -196,6 +198,21 @@ public:
         return votes_[playerId];
     }
 
+    std::string talkOf(int playerId) const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return talks_[playerId];
+    }
+
+    int votesCast(int playerId) const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return votesCast_[playerId];
+    }
+
+    int nightTargets(int playerId) const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return nightTargets_[playerId];
+    }
+
     bool alive(int playerId) const {
         std::lock_guard<std::mutex> lock(mutex_);
         return alive_[playerId] != 0;
@@ -218,6 +235,7 @@ public:
                            alive_[targetId] != 0 && targetId != playerId;
         if (valid) {
             votes_[playerId] = targetId;
+            ++votesCast_[playerId];
         }
         ++acted_;
         condition_.notify_all();
@@ -351,6 +369,10 @@ public:
         result.commissionerShot = commissionerShoots_;
 
         const int heal = doctorTarget_;
+        noteNightTarget(result.mafiaTarget);
+        noteNightTarget(result.maniacTarget);
+        noteNightTarget(result.doctorTarget);
+        noteNightTarget(result.commissionerTarget);
         result.mafiaKilled = killUnlessHealed(result.mafiaTarget, heal);
         result.maniacKilled = killUnlessHealed(maniacTarget_, heal);
         if (commissionerShoots_) {
@@ -378,6 +400,12 @@ private:
     void noteActed() {
         ++acted_;
         condition_.notify_all();
+    }
+
+    void noteNightTarget(int playerId) {
+        if (playerId >= 1 && playerId <= playerCount_) {
+            ++nightTargets_[playerId];
+        }
     }
 
     // Больше голосов побеждает. При равенстве остаётся меньший номер: обход идёт с 1.
@@ -431,6 +459,8 @@ private:
     std::vector<char> alive_;
     std::vector<std::string> talks_;
     std::vector<int> votes_;
+    std::vector<int> votesCast_;
+    std::vector<int> nightTargets_;
     std::vector<int> mafiaVotes_;
     int maniacTarget_ = 0;
     int doctorTarget_ = 0;

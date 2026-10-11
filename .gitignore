@@ -39,6 +39,9 @@
 *.out
 *.app
 
+# Игровые логи
+logs/
+
 # Build directories
 build/
 Build/

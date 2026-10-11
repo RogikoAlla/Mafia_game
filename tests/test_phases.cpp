@@ -1,13 +1,18 @@
 #include "game/Host.hpp"
+#include "game/Logger.hpp"
 #include "game/Player.hpp"
 
 #include "smart_ptr/SharedPtr.hpp"
 
 #include <cstring>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
+#include <iterator>
 #include <memory>
 #include <random>
 #include <sstream>
+#include <string>
 #include <thread>
 #include <vector>
 
@@ -396,6 +401,47 @@ void testDoctorDoesNotRepeatHeal() {
     expect(second != 0 && second != first, "доктор не лечит ту же цель две ночи подряд");
 }
 
+void testPlayerStats() {
+    mafia::GameState state(3);
+    state.assignRole(1, mafia::Role::Mafia);
+    state.assignRole(2, mafia::Role::Doctor);
+    state.assignRole(3, mafia::Role::Civilian);
+    state.submitTalk(1, "я не мафия");
+    expect(state.talkOf(1) == "я не мафия", "реплика сохраняется");
+    state.submitVote(1, 3);
+    state.submitVote(1, 1);
+    expect(state.votesCast(1) == 1, "голос в себя не увеличивает счётчик");
+    state.submitMafiaKill(1, 3);
+    state.submitHeal(2, 3);
+    state.resolveNight();
+    expect(state.nightTargets(3) == 2, "выстрел и лечение считаются отдельно");
+}
+
+void testLoggerWritesRound() {
+    const std::filesystem::path dir =
+        std::filesystem::temp_directory_path() / "mafia_file_log_test";
+    std::filesystem::remove_all(dir);
+    mafia::Logger logger(dir);
+    expect(std::filesystem::is_directory(dir), "каталог логов создаётся");
+    logger.appendRound(2, "игрок 1 голосует за 3\n");
+    logger.appendRound(2, "исключён игрок 3, мирный\n");
+    std::string round;
+    std::string summary;
+    {
+        std::ifstream roundFile(dir / "round_2.txt");
+        round.assign(std::istreambuf_iterator<char>(roundFile), {});
+    }
+    expect(round.find("голосует за 3") != std::string::npos, "файл раунда хранит голос");
+    expect(round.find("исключён игрок 3") != std::string::npos, "файл раунда хранит казнь");
+    logger.writeSummary("победитель: мирные\n");
+    {
+        std::ifstream summaryFile(dir / "summary.txt");
+        summary.assign(std::istreambuf_iterator<char>(summaryFile), {});
+    }
+    expect(summary.find("победитель: мирные") != std::string::npos, "итог пишется в summary");
+    std::filesystem::remove_all(dir);
+}
+
 void testMafiaNightVote() {
     mafia::GameState majority(6);
     majority.assignRole(1, mafia::Role::Mafia);
@@ -482,6 +528,8 @@ int main() {
     testHumanMafiaRetriesAlly();
     testDayVote();
     testMafiaDoesNotVoteForMafia();
+    testPlayerStats();
+    testLoggerWritesRound();
     testMafiaNightVote();
     testMafiaNightSkipsMafia();
     testDoctorDoesNotRepeatHeal();
