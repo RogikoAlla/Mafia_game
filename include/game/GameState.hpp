@@ -20,6 +20,9 @@ struct NightResult {
     int mafiaKilled = 0;
     int maniacKilled = 0;
     int commissionerKilled = 0;
+    int journalistFirst = 0;
+    int journalistSecond = 0;
+    bool journalistSame = false;
 };
 
 // Одна партия на всех. Ведущий и игроки держат её через SharedPtr.
@@ -58,6 +61,9 @@ public:
         doctorTarget_ = 0;
         commissionerTarget_ = 0;
         commissionerShoots_ = false;
+        journalistFirst_ = 0;
+        journalistSecond_ = 0;
+        journalistSame_ = false;
         if (phase == Phase::Finished) {
             finished_ = true;
         }
@@ -126,6 +132,7 @@ public:
             }
             switch (roles_[id]) {
             case Role::Mafia:
+            case Role::Ninja:
                 ++mafia;
                 break;
             case Role::Maniac:
@@ -174,7 +181,7 @@ public:
         }
         const Role dealt = roles_[playerId];
         return dealt == Role::Doctor || dealt == Role::Commissioner || dealt == Role::Maniac ||
-               dealt == Role::Mafia;
+               dealt == Role::Journalist || mafiaCamp(dealt);
     }
 
     // Зерно выбора целей. По умолчанию 1, игра в main задаёт своё.
@@ -264,7 +271,7 @@ public:
                 tie = true;
             }
         }
-        if (tie || bestId == 0) {
+        if (tie || bestId == 0 || roles_[bestId] == Role::Elder) {
             return 0;
         }
         alive_[bestId] = 0;
@@ -276,7 +283,7 @@ public:
         std::lock_guard<std::mutex> lock(mutex_);
         std::vector<int> allies;
         for (int id = 1; id <= playerCount_; ++id) {
-            if (id != playerId && roles_[id] == Role::Mafia && alive_[id] != 0) {
+            if (id != playerId && mafiaCamp(roles_[id]) && alive_[id] != 0) {
                 allies.push_back(id);
             }
         }
@@ -286,13 +293,13 @@ public:
     // Живая мафия может назвать только другого живого не из мафии.
     bool canMafiaShoot(int actor, int target) const {
         std::lock_guard<std::mutex> lock(mutex_);
-        if (actor < 1 || actor > playerCount_ || alive_[actor] == 0 || roles_[actor] != Role::Mafia) {
+        if (actor < 1 || actor > playerCount_ || alive_[actor] == 0 || !mafiaCamp(roles_[actor])) {
             return false;
         }
         if (target < 1 || target > playerCount_ || alive_[target] == 0 || target == actor) {
             return false;
         }
-        return roles_[target] != Role::Mafia;
+        return !mafiaCamp(roles_[target]);
     }
 
     int lastHeal() const {
@@ -315,8 +322,8 @@ public:
     void submitMafiaKill(int playerId, int targetId) {
         std::lock_guard<std::mutex> lock(mutex_);
         if (playerId >= 1 && playerId <= playerCount_ && alive_[playerId] != 0 &&
-            roles_[playerId] == Role::Mafia && livingTarget(playerId, targetId, false) &&
-            roles_[targetId] != Role::Mafia) {
+            mafiaCamp(roles_[playerId]) && livingTarget(playerId, targetId, false) &&
+            !mafiaCamp(roles_[targetId])) {
             mafiaVotes_[playerId] = targetId;
         }
         noteActed();
@@ -349,6 +356,35 @@ public:
         noteActed();
     }
 
+    // Двое других живых. Себя сравнивать нельзя. Ход отмечается в любом случае.
+    void submitCompare(int playerId, int first, int second) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        const bool valid = roles_[playerId] == Role::Journalist && alive_[playerId] != 0 &&
+                           livingTarget(playerId, first, false) &&
+                           livingTarget(playerId, second, false) && first != second;
+        if (valid) {
+            journalistFirst_ = first;
+            journalistSecond_ = second;
+            journalistSame_ = mafiaCamp(roles_[first]) == mafiaCamp(roles_[second]);
+        }
+        noteActed();
+    }
+
+    int journalistFirst() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return journalistFirst_;
+    }
+
+    int journalistSecond() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return journalistSecond_;
+    }
+
+    bool journalistSame() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return journalistSame_;
+    }
+
     void submitShot(int playerId, int targetId) {
         std::lock_guard<std::mutex> lock(mutex_);
         if (roles_[playerId] == Role::Commissioner && livingTarget(playerId, targetId, false)) {
@@ -373,6 +409,11 @@ public:
         noteNightTarget(result.maniacTarget);
         noteNightTarget(result.doctorTarget);
         noteNightTarget(result.commissionerTarget);
+        result.journalistFirst = journalistFirst_;
+        result.journalistSecond = journalistSecond_;
+        result.journalistSame = journalistSame_;
+        noteNightTarget(journalistFirst_);
+        noteNightTarget(journalistSecond_);
         result.mafiaKilled = killUnlessHealed(result.mafiaTarget, heal);
         result.maniacKilled = killUnlessHealed(maniacTarget_, heal);
         if (commissionerShoots_) {
@@ -393,6 +434,9 @@ public:
         doctorTarget_ = 0;
         commissionerTarget_ = 0;
         commissionerShoots_ = false;
+        journalistFirst_ = 0;
+        journalistSecond_ = 0;
+        journalistSame_ = false;
         return result;
     }
 
@@ -467,6 +511,9 @@ private:
     int lastDoctorTarget_ = 0;
     int commissionerTarget_ = 0;
     bool commissionerShoots_ = false;
+    int journalistFirst_ = 0;
+    int journalistSecond_ = 0;
+    bool journalistSame_ = false;
     std::vector<char> inspected_;
     std::vector<Role> inspectedAs_;
     std::mt19937 rng_{1};

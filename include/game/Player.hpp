@@ -51,6 +51,25 @@ private:
     int readKillTarget() const;
 };
 
+class Journalist : public Player {
+public:
+    using Player::Player;
+    void actNight() override;
+
+private:
+    int readOther(int exceptId) const;
+};
+
+class Ninja : public Mafia {
+public:
+    using Mafia::Mafia;
+};
+
+class Elder : public Player {
+public:
+    using Player::Player;
+};
+
 class Civilian : public Player {
 public:
     using Player::Player;

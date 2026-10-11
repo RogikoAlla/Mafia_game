@@ -9,7 +9,15 @@ enum class Role {
     Commissioner,
     Maniac,
     Civilian,
+    Journalist,
+    Ninja,
+    Elder,
 };
+
+// Ниндзя — мафия сверх формулы N/3. Журналист и старейшина — мирные.
+inline bool mafiaCamp(Role role) {
+    return role == Role::Mafia || role == Role::Ninja;
+}
 
 inline const char* roleName(Role role) {
     switch (role) {
@@ -23,6 +31,12 @@ inline const char* roleName(Role role) {
         return "маньяк";
     case Role::Civilian:
         return "мирный";
+    case Role::Journalist:
+        return "журналист";
+    case Role::Ninja:
+        return "ниндзя";
+    case Role::Elder:
+        return "старейшина";
     }
     return "неизвестная роль";
 }

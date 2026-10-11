@@ -1,6 +1,7 @@
 #include "game/Host.hpp"
 #include "game/Logger.hpp"
 #include "game/Player.hpp"
+#include "game/RolesConfig.hpp"
 
 #include "smart_ptr/SharedPtr.hpp"
 
@@ -36,6 +37,9 @@ static_assert(mafia::PlayerLike<mafia::Civilian>);
 static_assert(mafia::PlayerLike<mafia::Commissioner>);
 static_assert(mafia::PlayerLike<mafia::Doctor>);
 static_assert(mafia::PlayerLike<mafia::Maniac>);
+static_assert(mafia::PlayerLike<mafia::Journalist>);
+static_assert(mafia::PlayerLike<mafia::Ninja>);
+static_assert(mafia::PlayerLike<mafia::Elder>);
 static_assert(!mafia::PlayerLike<WithoutVote>);
 
 int failures = 0;
@@ -59,6 +63,12 @@ bool isRoleClass(mafia::Player* player, mafia::Role role) {
         return dynamic_cast<mafia::Maniac*>(player) != nullptr;
     case mafia::Role::Civilian:
         return dynamic_cast<mafia::Civilian*>(player) != nullptr;
+    case mafia::Role::Journalist:
+        return dynamic_cast<mafia::Journalist*>(player) != nullptr;
+    case mafia::Role::Ninja:
+        return dynamic_cast<mafia::Ninja*>(player) != nullptr;
+    case mafia::Role::Elder:
+        return dynamic_cast<mafia::Elder*>(player) != nullptr;
     }
     return false;
 }
@@ -85,6 +95,10 @@ void expectRoleCounts(const mafia::GameState& state, int mafiaCount, const char*
             break;
         case mafia::Role::Civilian:
             ++civilian;
+            break;
+        case mafia::Role::Journalist:
+        case mafia::Role::Ninja:
+        case mafia::Role::Elder:
             break;
         }
     }
@@ -520,6 +534,118 @@ void testMafiaDoesNotVoteForMafia() {
     }
 }
 
+void testYamlSelectsRoles() {
+    const std::filesystem::path dir = std::filesystem::temp_directory_path() / "mafia_roles_yaml";
+    std::filesystem::remove_all(dir);
+    std::filesystem::create_directories(dir);
+    const std::filesystem::path file = dir / "roles.yaml";
+    {
+        std::ofstream out(file);
+        out << "roles:\n  - journalist\n  - ninja\n  - elder\n  - ninja\n  - cook\n";
+    }
+    const std::vector<mafia::Role> roles = mafia::loadExtraRoles(file.string());
+    expect(roles.size() == 3, "в списке три роли");
+    expect(roles[0] == mafia::Role::Journalist, "первая роль — журналист");
+    expect(roles[1] == mafia::Role::Ninja, "вторая роль — ниндзя");
+    expect(roles[2] == mafia::Role::Elder, "третья роль — старейшина");
+    std::filesystem::remove_all(dir);
+}
+
+void countExtras(const mafia::GameState& state, int& journalist, int& ninja, int& elder) {
+    journalist = 0;
+    ninja = 0;
+    elder = 0;
+    for (int id = 1; id <= state.playerCount(); ++id) {
+        if (state.role(id) == mafia::Role::Journalist) {
+            ++journalist;
+        } else if (state.role(id) == mafia::Role::Ninja) {
+            ++ninja;
+        } else if (state.role(id) == mafia::Role::Elder) {
+            ++elder;
+        }
+    }
+}
+
+void testExtraSeats() {
+    const std::vector<mafia::Role> extras = {mafia::Role::Journalist, mafia::Role::Ninja,
+                                              mafia::Role::Elder};
+    mafia::SharedPtr<mafia::GameState> five(new mafia::GameState(5));
+    mafia::Host small(five);
+    std::mt19937 generator(1);
+    small.dealRoles(generator, extras);
+    int journalist = 0;
+    int ninja = 0;
+    int elder = 0;
+    countExtras(*five, journalist, ninja, elder);
+    expect(journalist == 1 && ninja == 0 && elder == 0, "при N=5 хватает места только журналисту");
+
+    mafia::SharedPtr<mafia::GameState> ten(new mafia::GameState(10));
+    mafia::Host large(ten);
+    large.dealRoles(generator, extras);
+    countExtras(*ten, journalist, ninja, elder);
+    expect(journalist == 1 && ninja == 1 && elder == 1, "при N=10 входят все три роли");
+}
+
+void testJournalistCamps() {
+    mafia::GameState state(4);
+    state.assignRole(1, mafia::Role::Mafia);
+    state.assignRole(2, mafia::Role::Ninja);
+    state.assignRole(3, mafia::Role::Civilian);
+    state.assignRole(4, mafia::Role::Journalist);
+    state.submitCompare(4, 1, 2);
+    expect(state.journalistSame(), "мафия и ниндзя — один лагерь");
+    state.beginPhase(mafia::Phase::Night, 2);
+    state.submitCompare(4, 2, 3);
+    expect(!state.journalistSame(), "ниндзя и мирный — разные лагеря");
+    state.beginPhase(mafia::Phase::Night, 3);
+    state.submitCompare(4, 4, 1);
+    expect(state.journalistFirst() == 0, "себя сравнивать нельзя");
+}
+
+void testJournalistReadsTwoNumbers() {
+    mafia::SharedPtr<mafia::GameState> state(new mafia::GameState(4));
+    state->assignRole(1, mafia::Role::Journalist);
+    state->assignRole(2, mafia::Role::Mafia);
+    state->assignRole(3, mafia::Role::Ninja);
+    state->assignRole(4, mafia::Role::Civilian);
+    auto human = mafia::makePlayer(state, 1, true);
+    std::istringstream input("2\n3\n");
+    std::streambuf* previous = std::cin.rdbuf(input.rdbuf());
+    human->actNight();
+    expect(state->journalistSame(), "человек сравнивает мафию и ниндзю");
+    std::cin.rdbuf(previous);
+}
+
+void testNinjaLooksTown() {
+    mafia::GameState check(3);
+    check.assignRole(1, mafia::Role::Commissioner);
+    check.assignRole(2, mafia::Role::Ninja);
+    check.assignRole(3, mafia::Role::Civilian);
+    check.submitCheck(1, 2);
+    check.resolveNight();
+    expect(check.inspectedAs(2) == mafia::Role::Civilian, "проверка ниндзи даёт мирного");
+
+    mafia::GameState shot(3);
+    shot.assignRole(1, mafia::Role::Ninja);
+    shot.assignRole(2, mafia::Role::Civilian);
+    shot.assignRole(3, mafia::Role::Mafia);
+    shot.submitMafiaKill(1, 2);
+    expect(shot.resolveNight().mafiaTarget == 2, "голос ниндзи назначает цель");
+    const std::vector<int> allies = shot.mafiaAllies(3);
+    expect(allies.size() == 1 && allies[0] == 1, "мафия видит ниндзю в соратниках");
+}
+
+void testElderSurvivesVote() {
+    mafia::GameState state(3);
+    state.assignRole(1, mafia::Role::Elder);
+    state.assignRole(2, mafia::Role::Civilian);
+    state.assignRole(3, mafia::Role::Civilian);
+    state.submitVote(2, 1);
+    state.submitVote(3, 1);
+    expect(state.resolveDayVote() == 0, "казнь старейшины днём не проходит");
+    expect(state.alive(1), "старейшина остаётся жив");
+}
+
 void testDealForTenPlayers() {
     mafia::SharedPtr<mafia::GameState> state(new mafia::GameState(10));
     mafia::Host host(state);
@@ -550,6 +676,12 @@ int main() {
     testCommissionerChecksThenShootsKnownMafia();
     testNight();
     testSameSeedDealsTheSameRoles();
+    testYamlSelectsRoles();
+    testExtraSeats();
+    testJournalistCamps();
+    testJournalistReadsTwoNumbers();
+    testNinjaLooksTown();
+    testElderSurvivesVote();
     testDealForTenPlayers();
 
     constexpr int kPlayers = 5;

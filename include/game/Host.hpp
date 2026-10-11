@@ -11,7 +11,11 @@ namespace mafia {
 
 // Маньяк, доктор, комиссар и мирный — лагерь мирных. Мафия — свой лагерь.
 inline const char* campName(Role role) {
-    return role == Role::Mafia ? "мафия" : "мирные";
+    return mafiaCamp(role) ? "мафия" : "мирные";
+}
+
+inline const char* campVerdict(bool same) {
+    return same ? "один лагерь" : "разные лагеря";
 }
 
 inline std::string eliminatedLine(int playerId, Role role, bool open) {
@@ -49,7 +53,8 @@ public:
 
     // k = 3: мафии max(1, N/k). Дальше по одному: доктор, комиссар, маньяк. Хвост — мирные.
     // Id перемешиваются генератором, состав ролей от этого не меняется.
-    void dealRoles(std::mt19937& generator);
+    // extras занимают места мирных. Если мест меньше, хвост списка пропускается.
+    void dealRoles(std::mt19937& generator, const std::vector<Role>& extras = {});
 
     // Крутит день и ночь, пока checkWinner не назовёт сторону.
     void run();
