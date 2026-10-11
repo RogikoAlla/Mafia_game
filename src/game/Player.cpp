@@ -86,7 +86,7 @@ void logNight(const SharedPtr<GameState>& state, int playerId, const char* actio
 int Mafia::chooseVoteTarget() const {
     std::vector<int> candidates;
     for (int id = 1; id <= state_->playerCount(); ++id) {
-        if (id != playerId_ && state_->alive(id) && state_->role(id) != Role::Mafia) {
+        if (id != playerId_ && state_->alive(id) && !mafiaCamp(state_->role(id))) {
             candidates.push_back(id);
         }
     }
@@ -103,7 +103,7 @@ int Mafia::readKillTarget() const {
             return target;
         }
         const bool ownSide = target >= 1 && target <= state_->playerCount() &&
-                             state_->alive(target) && state_->role(target) == Role::Mafia;
+                             state_->alive(target) && mafiaCamp(state_->role(target));
         if (ownSide) {
             logLine("ведущий: в мафию стрелять нельзя, введите другой номер");
         } else {
@@ -123,7 +123,7 @@ void Mafia::actNight() {
     } else {
         std::vector<int> candidates;
         for (int id = 1; id <= state_->playerCount(); ++id) {
-            if (state_->alive(id) && state_->role(id) != Role::Mafia) {
+            if (state_->alive(id) && !mafiaCamp(state_->role(id))) {
                 candidates.push_back(id);
             }
         }
@@ -221,7 +221,7 @@ void Maniac::actNight() {
 }
 
 void Player::run() {
-    if (interactive_ && state_->role(playerId_) == Role::Mafia) {
+    if (interactive_ && mafiaCamp(state_->role(playerId_))) {
         logLine("игрок " + std::to_string(playerId_) + ": " +
                 alliesLine(state_->mafiaAllies(playerId_)));
     }

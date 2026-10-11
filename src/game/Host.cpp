@@ -121,7 +121,7 @@ void Host::promptHuman(Phase phase) const {
         logLine("ведущий: игрок " + std::to_string(human) + ", введите реплику");
         return;
     }
-    if (phase == Phase::Night && state_->role(human) == Role::Mafia) {
+    if (phase == Phase::Night && mafiaCamp(state_->role(human))) {
         logLine("ведущий: " + alliesLine(state_->mafiaAllies(human)));
     }
     if (phase == Phase::DayVote ||

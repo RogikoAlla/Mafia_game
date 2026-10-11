@@ -175,7 +175,7 @@ public:
         }
         const Role dealt = roles_[playerId];
         return dealt == Role::Doctor || dealt == Role::Commissioner || dealt == Role::Maniac ||
-               dealt == Role::Mafia;
+               dealt == Role::Journalist || mafiaCamp(dealt);
     }
 
     // Зерно выбора целей. По умолчанию 1, игра в main задаёт своё.
@@ -277,7 +277,7 @@ public:
         std::lock_guard<std::mutex> lock(mutex_);
         std::vector<int> allies;
         for (int id = 1; id <= playerCount_; ++id) {
-            if (id != playerId && roles_[id] == Role::Mafia && alive_[id] != 0) {
+            if (id != playerId && mafiaCamp(roles_[id]) && alive_[id] != 0) {
                 allies.push_back(id);
             }
         }
@@ -287,13 +287,13 @@ public:
     // Живая мафия может назвать только другого живого не из мафии.
     bool canMafiaShoot(int actor, int target) const {
         std::lock_guard<std::mutex> lock(mutex_);
-        if (actor < 1 || actor > playerCount_ || alive_[actor] == 0 || roles_[actor] != Role::Mafia) {
+        if (actor < 1 || actor > playerCount_ || alive_[actor] == 0 || !mafiaCamp(roles_[actor])) {
             return false;
         }
         if (target < 1 || target > playerCount_ || alive_[target] == 0 || target == actor) {
             return false;
         }
-        return roles_[target] != Role::Mafia;
+        return !mafiaCamp(roles_[target]);
     }
 
     int lastHeal() const {
@@ -316,8 +316,8 @@ public:
     void submitMafiaKill(int playerId, int targetId) {
         std::lock_guard<std::mutex> lock(mutex_);
         if (playerId >= 1 && playerId <= playerCount_ && alive_[playerId] != 0 &&
-            roles_[playerId] == Role::Mafia && livingTarget(playerId, targetId, false) &&
-            roles_[targetId] != Role::Mafia) {
+            mafiaCamp(roles_[playerId]) && livingTarget(playerId, targetId, false) &&
+            !mafiaCamp(roles_[targetId])) {
             mafiaVotes_[playerId] = targetId;
         }
         noteActed();
