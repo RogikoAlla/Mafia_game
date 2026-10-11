@@ -196,6 +196,11 @@ public:
         return votes_[playerId];
     }
 
+    std::string talkOf(int playerId) const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return talks_[playerId];
+    }
+
     bool alive(int playerId) const {
         std::lock_guard<std::mutex> lock(mutex_);
         return alive_[playerId] != 0;
