@@ -25,6 +25,19 @@
 
 namespace {
 
+struct WithoutVote {
+    void talk() {}
+    void actNight() {}
+};
+
+static_assert(mafia::PlayerLike<mafia::Player>);
+static_assert(mafia::PlayerLike<mafia::Mafia>);
+static_assert(mafia::PlayerLike<mafia::Civilian>);
+static_assert(mafia::PlayerLike<mafia::Commissioner>);
+static_assert(mafia::PlayerLike<mafia::Doctor>);
+static_assert(mafia::PlayerLike<mafia::Maniac>);
+static_assert(!mafia::PlayerLike<WithoutVote>);
+
 int failures = 0;
 
 void expect(bool condition, const char* message) {
@@ -479,8 +492,8 @@ void testMafiaNightSkipsMafia() {
     int shots = 0;
     for (int round = 1; round <= 4; ++round) {
         state->beginPhase(mafia::Phase::Night, round);
-        first.actNight();
-        second.actNight();
+        mafia::takeNightAction(first);
+        mafia::takeNightAction(second);
         const mafia::NightResult night = state->resolveNight();
         if (night.mafiaTarget == 0) {
             continue;

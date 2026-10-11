@@ -248,7 +248,7 @@ void Player::run() {
                 vote();
                 break;
             case Phase::Night:
-                actNight();
+                takeNightAction(*this);
                 break;
             case Phase::Finished:
                 return;
