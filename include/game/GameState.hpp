@@ -265,7 +265,7 @@ public:
                 tie = true;
             }
         }
-        if (tie || bestId == 0) {
+        if (tie || bestId == 0 || roles_[bestId] == Role::Elder) {
             return 0;
         }
         alive_[bestId] = 0;
