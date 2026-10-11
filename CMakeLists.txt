@@ -18,6 +18,18 @@ function(mafia_set_utf8 target)
     endif()
 endfunction()
 
+include(FetchContent)
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+FetchContent_Declare(
+    yaml-cpp
+    GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
+    GIT_TAG yaml-cpp-0.9.0
+)
+set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+set(YAML_CPP_BUILD_CONTRIB OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(yaml-cpp)
+
 find_package(Threads REQUIRED)
 
 add_executable(mafia
@@ -25,8 +37,9 @@ add_executable(mafia
     src/game/Host.cpp
     src/game/Player.cpp
     src/game/Logger.cpp
+    src/game/RolesConfig.cpp
 )
-target_link_libraries(mafia PRIVATE shared_ptr Threads::Threads)
+target_link_libraries(mafia PRIVATE shared_ptr Threads::Threads yaml-cpp::yaml-cpp)
 mafia_set_utf8(mafia)
 
 add_executable(test_shared_ptr tests/test_shared_ptr.cpp)
@@ -38,8 +51,9 @@ add_executable(test_phases
     src/game/Host.cpp
     src/game/Player.cpp
     src/game/Logger.cpp
+    src/game/RolesConfig.cpp
 )
-target_link_libraries(test_phases PRIVATE shared_ptr Threads::Threads)
+target_link_libraries(test_phases PRIVATE shared_ptr Threads::Threads yaml-cpp::yaml-cpp)
 mafia_set_utf8(test_phases)
 
 enable_testing()
