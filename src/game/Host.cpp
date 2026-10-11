@@ -1,5 +1,6 @@
 #include "game/Host.hpp"
 #include "game/Log.hpp"
+#include "game/Logger.hpp"
 
 #include <algorithm>
 #include <numeric>
@@ -7,6 +8,37 @@
 #include <vector>
 
 namespace mafia {
+namespace {
+
+std::string talksText(const GameState& state) {
+    std::string text = "обсуждение\n";
+    for (int id = 1; id <= state.playerCount(); ++id) {
+        const std::string talk = state.talkOf(id);
+        if (!talk.empty()) {
+            text += "игрок " + std::to_string(id) + ": " + talk + '\n';
+        }
+    }
+    return text;
+}
+
+std::string votesText(const GameState& state, int eliminated) {
+    std::string text = "голосование\n";
+    for (int id = 1; id <= state.playerCount(); ++id) {
+        const int target = state.voteOf(id);
+        if (target != 0) {
+            text += "игрок " + std::to_string(id) + " голосует за " + std::to_string(target) + '\n';
+        }
+    }
+    if (eliminated == 0) {
+        text += "ничья, никто не выбыл\n";
+    } else {
+        text += "исключён игрок " + std::to_string(eliminated) + ", " +
+                roleName(state.role(eliminated)) + '\n';
+    }
+    return text;
+}
+
+}  // namespace
 
 void Host::dealRoles(std::mt19937& generator) {
     constexpr int kMafiaDivisor = 3;
@@ -45,6 +77,7 @@ void Host::promptHuman(Phase phase) const {
 }
 
 void Host::run() {
+    Logger logger("logs");
     const Phase phases[] = {Phase::DayTalk, Phase::DayVote, Phase::Night};
     int round = 1;
     while (true) {
@@ -53,6 +86,9 @@ void Host::run() {
             promptHuman(phase);
             state_->beginPhase(phase, round);
             state_->waitUntilAllActed();
+            if (phase == Phase::DayTalk) {
+                logger.appendRound(round, talksText(*state_));
+            }
             if (phase == Phase::DayVote) {
                 const int eliminated = state_->resolveDayVote();
                 if (eliminated == 0) {
@@ -61,6 +97,7 @@ void Host::run() {
                     logLine(eliminatedLine(eliminated, state_->role(eliminated),
                                            state_->openAnnouncements()));
                 }
+                logger.appendRound(round, votesText(*state_, eliminated));
             }
             if (phase == Phase::Night) {
                 const NightResult night = state_->resolveNight();
