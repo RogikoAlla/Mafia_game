@@ -77,4 +77,12 @@ public:
 // Роль уже должна быть раздана. interactive не меняет класс роли.
 std::unique_ptr<Player> makePlayer(SharedPtr<GameState> state, int playerId, bool interactive = false);
 
+// У типа должны быть те же ходы, что у игрока. Проверка при компиляции.
+template<typename T>
+concept PlayerLike = requires(T& player) {
+    player.talk();
+    player.vote();
+    player.actNight();
+};
+
 }  // namespace mafia
