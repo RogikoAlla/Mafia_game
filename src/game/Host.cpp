@@ -94,7 +94,7 @@ std::string summaryText(const GameState& state) {
 
 }  // namespace
 
-void Host::dealRoles(std::mt19937& generator) {
+void Host::dealRoles(std::mt19937& generator, const std::vector<Role>& extras) {
     constexpr int kMafiaDivisor = 3;
     const int playerCount = state_->playerCount();
     const int mafiaCount = std::max(1, playerCount / kMafiaDivisor);
@@ -110,6 +110,12 @@ void Host::dealRoles(std::mt19937& generator) {
     state_->assignRole(ids[next++], Role::Doctor);
     state_->assignRole(ids[next++], Role::Commissioner);
     state_->assignRole(ids[next++], Role::Maniac);
+    for (Role extra : extras) {
+        if (next >= playerCount) {
+            break;
+        }
+        state_->assignRole(ids[next++], extra);
+    }
 }
 
 void Host::promptHuman(Phase phase) const {

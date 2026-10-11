@@ -1,6 +1,7 @@
 #include "game/Host.hpp"
 #include "game/Log.hpp"
 #include "game/Player.hpp"
+#include "game/RolesConfig.hpp"
 
 #include "smart_ptr/SharedPtr.hpp"
 
@@ -33,6 +34,7 @@ int main(int argc, char* argv[]) {
     bool interactive = false;
     bool openAnnouncements = false;
     bool fullLog = false;
+    std::string rolesPath;
 
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
@@ -44,6 +46,8 @@ int main(int argc, char* argv[]) {
             openAnnouncements = true;
         } else if (arg == "--full-log") {
             fullLog = true;
+        } else if (arg == "--roles" && i + 1 < argc) {
+            rolesPath = argv[++i];
         }
     }
 
@@ -59,7 +63,9 @@ int main(int argc, char* argv[]) {
 
     mafia::Host host(state);
     std::mt19937 generator(device());
-    host.dealRoles(generator);
+    const std::vector<mafia::Role> extras =
+        rolesPath.empty() ? std::vector<mafia::Role>{} : mafia::loadExtraRoles(rolesPath);
+    host.dealRoles(generator, extras);
 
     mafia::logLine(std::string("игроков: ") + std::to_string(playerCount) +
                    (interactive ? ", человек за игроком 1" : ", все игроки программные") +
