@@ -20,6 +20,9 @@ struct NightResult {
     int mafiaKilled = 0;
     int maniacKilled = 0;
     int commissionerKilled = 0;
+    int journalistFirst = 0;
+    int journalistSecond = 0;
+    bool journalistSame = false;
 };
 
 // Одна партия на всех. Ведущий и игроки держат её через SharedPtr.
@@ -58,6 +61,9 @@ public:
         doctorTarget_ = 0;
         commissionerTarget_ = 0;
         commissionerShoots_ = false;
+        journalistFirst_ = 0;
+        journalistSecond_ = 0;
+        journalistSame_ = false;
         if (phase == Phase::Finished) {
             finished_ = true;
         }
@@ -350,6 +356,35 @@ public:
         noteActed();
     }
 
+    // Двое других живых. Себя сравнивать нельзя. Ход отмечается в любом случае.
+    void submitCompare(int playerId, int first, int second) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        const bool valid = roles_[playerId] == Role::Journalist && alive_[playerId] != 0 &&
+                           livingTarget(playerId, first, false) &&
+                           livingTarget(playerId, second, false) && first != second;
+        if (valid) {
+            journalistFirst_ = first;
+            journalistSecond_ = second;
+            journalistSame_ = mafiaCamp(roles_[first]) == mafiaCamp(roles_[second]);
+        }
+        noteActed();
+    }
+
+    int journalistFirst() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return journalistFirst_;
+    }
+
+    int journalistSecond() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return journalistSecond_;
+    }
+
+    bool journalistSame() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return journalistSame_;
+    }
+
     void submitShot(int playerId, int targetId) {
         std::lock_guard<std::mutex> lock(mutex_);
         if (roles_[playerId] == Role::Commissioner && livingTarget(playerId, targetId, false)) {
@@ -374,6 +409,11 @@ public:
         noteNightTarget(result.maniacTarget);
         noteNightTarget(result.doctorTarget);
         noteNightTarget(result.commissionerTarget);
+        result.journalistFirst = journalistFirst_;
+        result.journalistSecond = journalistSecond_;
+        result.journalistSame = journalistSame_;
+        noteNightTarget(journalistFirst_);
+        noteNightTarget(journalistSecond_);
         result.mafiaKilled = killUnlessHealed(result.mafiaTarget, heal);
         result.maniacKilled = killUnlessHealed(maniacTarget_, heal);
         if (commissionerShoots_) {
@@ -394,6 +434,9 @@ public:
         doctorTarget_ = 0;
         commissionerTarget_ = 0;
         commissionerShoots_ = false;
+        journalistFirst_ = 0;
+        journalistSecond_ = 0;
+        journalistSame_ = false;
         return result;
     }
 
@@ -468,6 +511,9 @@ private:
     int lastDoctorTarget_ = 0;
     int commissionerTarget_ = 0;
     bool commissionerShoots_ = false;
+    int journalistFirst_ = 0;
+    int journalistSecond_ = 0;
+    bool journalistSame_ = false;
     std::vector<char> inspected_;
     std::vector<Role> inspectedAs_;
     std::mt19937 rng_{1};
