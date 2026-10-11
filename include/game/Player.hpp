@@ -85,4 +85,9 @@ concept PlayerLike = requires(T& player) {
     player.actNight();
 };
 
+template<PlayerLike T>
+void takeNightAction(T& player) {
+    player.actNight();
+}
+
 }  // namespace mafia
