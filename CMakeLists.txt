@@ -24,6 +24,7 @@ add_executable(mafia
     src/main.cpp
     src/game/Host.cpp
     src/game/Player.cpp
+    src/game/Logger.cpp
 )
 target_link_libraries(mafia PRIVATE shared_ptr Threads::Threads)
 mafia_set_utf8(mafia)
@@ -36,6 +37,7 @@ add_executable(test_phases
     tests/test_phases.cpp
     src/game/Host.cpp
     src/game/Player.cpp
+    src/game/Logger.cpp
 )
 target_link_libraries(test_phases PRIVATE shared_ptr Threads::Threads)
 mafia_set_utf8(test_phases)
