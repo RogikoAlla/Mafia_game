@@ -54,6 +54,11 @@ std::string nightText(const GameState& state, const NightResult& night) {
                 (night.commissionerShot ? "стреляет в игрока " : "проверяет игрока ") +
                 std::to_string(night.commissionerTarget) + '\n';
     }
+    if (night.journalistFirst != 0) {
+        text += "журналист сравнивает " + std::to_string(night.journalistFirst) + " и " +
+                std::to_string(night.journalistSecond) + ": " + campVerdict(night.journalistSame) +
+                '\n';
+    }
     const int killed[] = {night.mafiaKilled, night.maniacKilled, night.commissionerKilled};
     bool any = false;
     for (int index = 0; index < 3; ++index) {
@@ -130,6 +135,11 @@ void Host::promptHuman(Phase phase) const {
     if (phase == Phase::Night && mafiaCamp(state_->role(human))) {
         logLine("ведущий: " + alliesLine(state_->mafiaAllies(human)));
     }
+    if (phase == Phase::Night && state_->role(human) == Role::Journalist) {
+        logLine("ведущий: игрок " + std::to_string(human) +
+                ", введите два номера других живых игроков");
+        return;
+    }
     if (phase == Phase::DayVote ||
         (phase == Phase::Night && state_->nightChoiceRequired(human))) {
         logLine("ведущий: игрок " + std::to_string(human) + ", введите номер живого игрока");
@@ -176,6 +186,12 @@ void Host::run() {
                         logLine(std::string("ведущий: комиссар ") +
                                 (night.commissionerShot ? "стреляет в игрока " : "проверяет игрока ") +
                                 std::to_string(night.commissionerTarget));
+                    }
+                    if (night.journalistFirst != 0) {
+                        logLine("ведущий: журналист сравнивает " +
+                                std::to_string(night.journalistFirst) + " и " +
+                                std::to_string(night.journalistSecond) + ": " +
+                                campVerdict(night.journalistSame));
                     }
                 }
                 const int killed[] = {night.mafiaKilled, night.maniacKilled, night.commissionerKilled};

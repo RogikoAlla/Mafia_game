@@ -14,6 +14,10 @@ inline const char* campName(Role role) {
     return mafiaCamp(role) ? "мафия" : "мирные";
 }
 
+inline const char* campVerdict(bool same) {
+    return same ? "один лагерь" : "разные лагеря";
+}
+
 inline std::string eliminatedLine(int playerId, Role role, bool open) {
     const std::string who = "ведущий: исключён игрок " + std::to_string(playerId) + ", ";
     if (open) {

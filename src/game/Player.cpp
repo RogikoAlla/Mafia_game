@@ -199,6 +199,65 @@ void Commissioner::actNight() {
     state_->submitCheck(playerId_, target);
 }
 
+int Journalist::readOther(int exceptId) const {
+    while (true) {
+        const int target = readTargetId();
+        if (std::cin.fail()) {
+            return 0;
+        }
+        if (target >= 1 && target <= state_->playerCount() && target != playerId_ &&
+            target != exceptId && state_->alive(target)) {
+            return target;
+        }
+        logLine("ведущий: введите номер другого живого игрока");
+    }
+}
+
+void Journalist::actNight() {
+    if (!state_->alive(playerId_)) {
+        state_->markActed();
+        return;
+    }
+    int first = 0;
+    int second = 0;
+    if (interactive_) {
+        first = readOther(0);
+        if (std::cin.fail()) {
+            state_->markActed();
+            return;
+        }
+        second = readOther(first);
+        if (std::cin.fail()) {
+            state_->markActed();
+            return;
+        }
+    } else {
+        std::vector<int> candidates;
+        for (int id = 1; id <= state_->playerCount(); ++id) {
+            if (id != playerId_ && state_->alive(id)) {
+                candidates.push_back(id);
+            }
+        }
+        if (candidates.size() < 2) {
+            state_->markActed();
+            return;
+        }
+        first = state_->pickCandidate(candidates);
+        std::vector<int> rest;
+        for (int id : candidates) {
+            if (id != first) {
+                rest.push_back(id);
+            }
+        }
+        second = state_->pickCandidate(rest);
+    }
+    logNight(state_, playerId_, "сравнивает", first);
+    state_->submitCompare(playerId_, first, second);
+    if (state_->journalistFirst() != 0 && (interactive_ || state_->fullLog())) {
+        logLine("игрок " + std::to_string(playerId_) + ": " + campVerdict(state_->journalistSame()));
+    }
+}
+
 void Maniac::actNight() {
     if (!state_->alive(playerId_)) {
         state_->markActed();
@@ -270,6 +329,12 @@ std::unique_ptr<Player> makePlayer(SharedPtr<GameState> state, int playerId, boo
         return std::make_unique<Maniac>(state, playerId, interactive);
     case Role::Civilian:
         return std::make_unique<Civilian>(state, playerId, interactive);
+    case Role::Journalist:
+        return std::make_unique<Journalist>(state, playerId, interactive);
+    case Role::Ninja:
+        return std::make_unique<Ninja>(state, playerId, interactive);
+    case Role::Elder:
+        return std::make_unique<Elder>(state, playerId, interactive);
     }
     return std::make_unique<Civilian>(state, playerId, interactive);
 }
