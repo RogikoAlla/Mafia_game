@@ -79,6 +79,10 @@ class Commissioner : public Player {
 public:
     using Player::Player;
     void actNight() override;
+
+protected:
+    // Живая мафия, которую он проверил или не смог застрелить. Иначе случайный живой.
+    int chooseVoteTarget() const override;
 };
 
 class Doctor : public Player {

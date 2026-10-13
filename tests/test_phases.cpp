@@ -390,6 +390,41 @@ void testCommissionerChecksThenShootsKnownMafia() {
            "после проверки комиссар стреляет в мафию");
 }
 
+void testCommissionerVotesForMafiaWhoSurvivedNight() {
+    mafia::SharedPtr<mafia::GameState> checked(new mafia::GameState(4));
+    checked->assignRole(1, mafia::Role::Commissioner);
+    checked->assignRole(2, mafia::Role::Mafia);
+    checked->assignRole(3, mafia::Role::Civilian);
+    checked->assignRole(4, mafia::Role::Civilian);
+    checked->submitCheck(1, 2);
+    checked->resolveNight();
+    mafia::Commissioner afterCheck(checked, 1);
+    afterCheck.vote();
+    expect(checked->voteOf(1) == 2, "после проверки мафии комиссар голосует за неё");
+
+    mafia::SharedPtr<mafia::GameState> saved(new mafia::GameState(4));
+    saved->assignRole(1, mafia::Role::Commissioner);
+    saved->assignRole(2, mafia::Role::Mafia);
+    saved->assignRole(3, mafia::Role::Doctor);
+    saved->assignRole(4, mafia::Role::Civilian);
+    saved->submitShot(1, 2);
+    saved->submitHeal(3, 2);
+    const mafia::NightResult night = saved->resolveNight();
+    expect(night.commissionerKilled == 0 && saved->alive(2), "доктор спасает мафию от комиссара");
+    mafia::Commissioner afterShot(saved, 1);
+    afterShot.vote();
+    expect(saved->voteOf(1) == 2, "после неудачного выстрела комиссар голосует за мафию");
+
+    mafia::SharedPtr<mafia::GameState> killed(new mafia::GameState(3));
+    killed->assignRole(1, mafia::Role::Commissioner);
+    killed->assignRole(2, mafia::Role::Mafia);
+    killed->assignRole(3, mafia::Role::Civilian);
+    killed->submitShot(1, 2);
+    killed->resolveNight();
+    expect(!killed->alive(2), "выстрел без лечения убивает мафию");
+    expect(killed->commissionerSuspect() == 0, "убитая мафия не остаётся целью голоса");
+}
+
 void testManiacPicksAnotherPlayer() {
     mafia::SharedPtr<mafia::GameState> state(new mafia::GameState(3));
     state->assignRole(1, mafia::Role::Maniac);
@@ -689,6 +724,7 @@ int main() {
     testDoctorDoesNotRepeatHeal();
     testManiacPicksAnotherPlayer();
     testCommissionerChecksThenShootsKnownMafia();
+    testCommissionerVotesForMafiaWhoSurvivedNight();
     testNight();
     testSameSeedDealsTheSameRoles();
     testYamlSelectsRoles();

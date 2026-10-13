@@ -318,6 +318,15 @@ public:
         return inspectedAs_[playerId];
     }
 
+    // Живая мафия с проверки или с неудачного выстрела. 0, если такой цели нет.
+    int commissionerSuspect() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (commissionerSuspect_ == 0 || alive_[commissionerSuspect_] == 0) {
+            return 0;
+        }
+        return commissionerSuspect_;
+    }
+
     // Голос живой мафии. Выстрел в мафию не записывается, отметка хода остаётся.
     void submitMafiaKill(int playerId, int targetId) {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -418,10 +427,20 @@ public:
         result.maniacKilled = killUnlessHealed(maniacTarget_, heal);
         if (commissionerShoots_) {
             result.commissionerKilled = killUnlessHealed(commissionerTarget_, heal);
+            if (result.commissionerKilled == 0 && commissionerTarget_ != 0 &&
+                alive_[commissionerTarget_] != 0 && mafiaCamp(roles_[commissionerTarget_])) {
+                inspected_[commissionerTarget_] = 1;
+                inspectedAs_[commissionerTarget_] = Role::Mafia;
+                commissionerSuspect_ = commissionerTarget_;
+            }
         } else if (commissionerTarget_ != 0) {
             inspected_[commissionerTarget_] = 1;
             inspectedAs_[commissionerTarget_] =
                 roles_[commissionerTarget_] == Role::Mafia ? Role::Mafia : Role::Civilian;
+            if (inspectedAs_[commissionerTarget_] == Role::Mafia &&
+                alive_[commissionerTarget_] != 0) {
+                commissionerSuspect_ = commissionerTarget_;
+            }
         }
         if (doctorTarget_ != 0) {
             lastDoctorTarget_ = doctorTarget_;
@@ -516,6 +535,7 @@ private:
     bool journalistSame_ = false;
     std::vector<char> inspected_;
     std::vector<Role> inspectedAs_;
+    int commissionerSuspect_ = 0;
     std::mt19937 rng_{1};
 
     mutable std::mutex mutex_;

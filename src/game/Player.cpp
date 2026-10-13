@@ -199,6 +199,14 @@ void Commissioner::actNight() {
     state_->submitCheck(playerId_, target);
 }
 
+int Commissioner::chooseVoteTarget() const {
+    const int suspect = state_->commissionerSuspect();
+    if (suspect != 0 && state_->alive(suspect)) {
+        return suspect;
+    }
+    return Player::chooseVoteTarget();
+}
+
 int Journalist::readOther(int exceptId) const {
     while (true) {
         const int target = readTargetId();
