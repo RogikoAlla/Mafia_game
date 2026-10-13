@@ -87,10 +87,31 @@ int main(int argc, char* argv[]) {
         rolesPath.empty() ? std::vector<mafia::Role>{} : mafia::loadExtraRoles(rolesPath);
     host.dealRoles(generator, extras);
 
+    std::string usedExtras;
+    for (mafia::Role extra : extras) {
+        bool seated = false;
+        for (int playerId = 1; playerId <= playerCount; ++playerId) {
+            if (state->role(playerId) == extra) {
+                seated = true;
+                break;
+            }
+        }
+        if (!seated) {
+            continue;
+        }
+        if (!usedExtras.empty()) {
+            usedExtras += ", ";
+        }
+        usedExtras += mafia::roleName(extra);
+    }
+    if (usedExtras.empty()) {
+        usedExtras = "нет";
+    }
+
     mafia::logLine(std::string("игроков: ") + std::to_string(playerCount) +
                    (interactive ? ", человек за игроком 1" : ", все игроки программные") +
                    ", объявления " + (openAnnouncements ? "открытые" : "закрытые") + ", лог " +
-                   (fullLog ? "полный" : "краткий"));
+                   (fullLog ? "полный" : "краткий") + ", дополнительные роли: " + usedExtras);
 
     std::vector<std::unique_ptr<mafia::Player>> roster;
     roster.reserve(playerCount);
