@@ -21,6 +21,18 @@
 #include <windows.h>
 #endif
 
+void printUsage() {
+    mafia::logLine(
+        "Использование: mafia [флаги]\n"
+        "  --help, -h                  эта справка\n"
+        "  --players N                 число игроков, не больше 100, по умолчанию 5\n"
+        "  --interactive               человек играет за игрока 1\n"
+        "  --open-announcements        после казни и ночи печатать полную роль\n"
+        "  --full-log                  печатать роли, реплики, голоса и ночные цели\n"
+        "  --roles ФАЙЛ                дополнительные роли из YAML: journalist, ninja, elder\n"
+        "Без флагов: 5 игроков, все программные, объявления закрытые, лог краткий.");
+}
+
 int main(int argc, char* argv[]) {
 #ifdef _WIN32
     // Исходники и литералы в UTF-8, консоль Windows по умолчанию в OEM (866).
@@ -38,7 +50,10 @@ int main(int argc, char* argv[]) {
 
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
-        if (arg == "--players" && i + 1 < argc) {
+        if (arg == "--help" || arg == "-h") {
+            printUsage();
+            return 0;
+        } else if (arg == "--players" && i + 1 < argc) {
             playerCount = std::atoi(argv[++i]);
         } else if (arg == "--interactive") {
             interactive = true;
@@ -49,6 +64,11 @@ int main(int argc, char* argv[]) {
         } else if (arg == "--roles" && i + 1 < argc) {
             rolesPath = argv[++i];
         }
+    }
+
+    if (playerCount > 100) {
+        std::cerr << "ошибка: игроков не больше 100\n";
+        return 1;
     }
 
     mafia::SharedPtr<mafia::GameState> state(new mafia::GameState(playerCount));
