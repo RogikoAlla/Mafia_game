@@ -5,7 +5,8 @@
 
 namespace mafia {
 
-// Пишет партию в каталог. Консоль при этом не трогает.
+// Пишет одну партию в каталог. При создании стирает файлы прошлых партий.
+// Консоль при этом не трогает.
 class Logger {
 public:
     explicit Logger(std::filesystem::path directory);

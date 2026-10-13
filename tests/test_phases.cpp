@@ -466,6 +466,21 @@ void testLoggerWritesRound() {
         summary.assign(std::istreambuf_iterator<char>(summaryFile), {});
     }
     expect(summary.find("победитель: мирные") != std::string::npos, "итог пишется в summary");
+
+    {
+        std::ofstream leftover(dir / "round_9.txt");
+        leftover << "старая партия\n";
+    }
+    mafia::Logger nextGame(dir);
+    expect(!std::filesystem::exists(dir / "round_9.txt"), "новая партия стирает старые раунды");
+    expect(!std::filesystem::exists(dir / "round_2.txt"), "новая партия стирает прошлый round_2");
+    nextGame.appendRound(2, "новая партия\n");
+    std::string fresh;
+    {
+        std::ifstream roundFile(dir / "round_2.txt");
+        fresh.assign(std::istreambuf_iterator<char>(roundFile), {});
+    }
+    expect(fresh == "новая партия\n", "после очистки пишется только новая партия");
     std::filesystem::remove_all(dir);
 }
 
